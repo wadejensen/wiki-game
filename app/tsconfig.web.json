@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "es6",
+    "moduleResolution": "node",
+    "lib": ["es2016", "dom", "es5"],
+    "strict": true,
+    "target": "es6",
+    "incremental": true,
+    "outDir": "build",
+    "baseUrl": ".",
+    "rootDirs": [
+      "./src/main/ts"
+    ],
+    "paths": {
+      "common/*": ["common/src/main/ts/*"]
+    },
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "sourceMap": true,
+    "importHelpers": false
+  },
+  "include": [
+    "web/src/main/ts/**/*",
+    "common/src/main/ts/**/*"
+  ]
+}

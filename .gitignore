@@ -1,0 +1,6 @@
+.idea
+.envrc
+*.tfstate
+.terraform
+*.tfstate.backup
+.DS_Store
