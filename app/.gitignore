@@ -2,3 +2,4 @@ node_modules/
 build/
 dist/
 !dist/static
+/static/app.js
