@@ -2,16 +2,16 @@ import * as Cheerio from "cheerio";
 import {RateLimitedHTTPClient} from "./http/rate_limited_http_client";
 import {FetchHTTPClient} from "./http/fetch_http_client";
 import {LosslessThrottle} from "./lossless_throttle";
-import {ConnectableObservable, Observable, Observer, Subject} from "rxjs";
+import {ConnectableObservable, EMPTY, from, Observable, Observer, of, Subject} from "rxjs";
 import {HTTPClient} from "./http/http_client";
 import fs from "fs";
 import {sys} from "typescript";
 import {URL} from "url";
 import {
-  bufferTime,
+  bufferTime, catchError, concatMap,
   count,
   distinct,
-  map,
+  map, mergeMap,
   multicast, publish,
   scan,
   tap,
@@ -21,14 +21,16 @@ import {
 import {SubjectSubscriber} from "rxjs/internal/Subject";
 import {url} from "inspector";
 
-Array.prototype.flatMap = function(lambda) {
-  return Array.prototype.concat.apply([], this.map(lambda));
+import fetch, { Request, Response } from "node-fetch"
+
+function flatMap<U, T>(fn: (u: U) => T, arr: U[]) {
+  return Array.prototype.concat.apply([], arr.map(fn));
 };
 
 start();
 
 // do not get carried away crawling
-setTimeout(() => sys.exit(0), 20000);
+setTimeout(() => sys.exit(0), 10000);
 
 async function start() {
   const argv = require('yargs').argv;
@@ -52,41 +54,59 @@ async function start() {
 
   console.log(seedUrls);
   const crawlerSubject = new Subject<string>();
-  const distinctUrls = crawlerSubject.pipe(
-    distinct(),
-    multicast(() => new Subject<string>())
-  ) as ConnectableObservable<string>;
+
+  crawlerSubject.subscribe((url) => crawl(crawlerSubject, httpClient, url));
+  crawlerSubject.subscribe((u) => console.log(u));
+  crawlerSubject.subscribe((u) => console.log(u));
+
+  seedUrls.forEach(url => crawlerSubject.next(url));
+  crawlerSubject.next("https://stackoverflow.com")
+
+  // const counter = distinctUrls
+  //   .pipe(
+  //     map((url, i) => i),
+  //   ).subscribe((count) => console.log(count));
 
 
-  seedUrls.map(url => crawl(crawlerSubject, httpClient, url));
-
-  const counter = distinctUrls
-  .pipe(
-    map(url => 1),
-    scan(count => count + 1),
-  ).subscribe((count: number) => console.log(count));
-
-  const printer = distinctUrls
-    .subscribe((url: string) => console.log(url));
-
-  distinctUrls.connect();
+  //const printer = distinctUrls.subscribe((url) => console.log(url));
+  //
+  // const distinctUrls = crawlerSubject.pipe(
+  //   tap(u => console.log(u)),
+  //   // ignore urls we have seen before
+  //   distinct(),
+  //   //TODO(wadejensen) add a remote execution strategy for fanout
+  //   mergeMap((url) => crawl(httpClient, url)),
+  //   // feedback child links into the crawler pipeline to recursively crawl
+  //   tap(([parentUrl, links]) => links.forEach(crawlerSubject.next)),
+  //   //TODO(wadejensen) flush result to graph db
+  //   tap(([parentUrl, links]) => {}),
+  //   map(([parentUrl, links]) => parentUrl),
+  //   multicast(() => new Subject<string>()),
+  // ) as ConnectableObservable<string>;
 }
 
-async function crawl(subject: Subject<string>, httpClient: HTTPClient, url: string): Promise<void> {
+async function crawl(
+  crawlerSubject: Subject<string>,
+  httpClient: HTTPClient,
+  url: string
+): Promise<void> { //[string, string[]]
   try {
-    const resp = await httpClient.get(url);
-    const html = await resp.text();
+    const html = await httpClient
+      .get(url)
+      .then(resp => resp.text());
 
     // jQuery API reimplemented for Node
     const document = Cheerio.load(html);
     // scrape page for href links
     const hrefs = document("[href]").map((i,tag) => tag.attribs["href"]).get();
-    const links = hrefs.flatMap(href => normaliseHref(href, url));
-    links.forEach((val, i) => subject.next(val));
-    links.forEach(link => crawl(subject, httpClient, link));
+    const links = flatMap(((href: string) => normaliseHref(href, url)), hrefs);
+    console.log(links);
+    links.forEach(link => crawlerSubject.next(link));
+    //return [url, links];
   } catch (err) {
     console.log(err);
     console.log(`Could not parse contents of ${url} as HTML`);
+    //return of<[string, string[]]>()
   }
 }
 
