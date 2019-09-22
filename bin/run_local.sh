@@ -8,6 +8,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 APP_HOME="${REPO_ROOT}/app"
 
 CRAWLER_SEED_FILE="${APP_HOME}/server/src/main/resources/crawler_seed.txt"
+DB_CONF_FILE="${APP_HOME}/server/src/main/resources/gremlin.local.json"
 
 PROG=$(basename "$0")
 
@@ -50,7 +51,7 @@ main() {
     --ignore web \
     --watch server/src \
     --ext ts \
-    --exec "npm run build:server:${webpack_mode} && npm run deploy -- --seed-file ${CRAWLER_SEED_FILE}"
+    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && npm run deploy --inpect -- --seed-file ${CRAWLER_SEED_FILE} --db-conf-file ${DB_CONF_FILE}"
 }
 
 main "$@"

@@ -30,7 +30,7 @@ export class Crawler {
   static create(): Crawler {
     const httpClient = new RateLimitedHTTPClient(
       new FetchHTTPClient(3000, 3, 300, true),
-      new LosslessThrottle(3),
+      new LosslessThrottle(8),
     );
     const localCrawlFn = (i: number, url: string) =>
       crawl(httpClient, i, url);
