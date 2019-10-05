@@ -8,9 +8,61 @@ import {insertCrawlerRecord} from "./graph";
 import {from, of} from "rxjs";
 import GraphTraversalSource = process.GraphTraversalSource;
 import Graph = structure.Graph;
+import {Server} from "./server";
 
-setTimeout(() => sys.exit(0), 30000);
-start();
+const addV = process.statics.addV;
+const addE = process.statics.addE;
+const fold = process.statics.fold;
+const unfold = process.statics.unfold;
+const inV = process.statics.inV;
+const outV = process.statics.outV;
+const inE = process.statics.inE;
+const outE = process.statics.outE;
+
+new Server().start();
+populateGraph();
+
+// setTimeout(() => sys.exit(0), 30000);
+// start();
+
+function rand(): number {
+  return Math.floor(Math.random() * 100);
+}
+
+async function populateGraph(): Promise<void> {
+  const graphClient: GraphTraversalSource = await createGraphDBConnection();
+  graphClient.V().drop().iterate();
+
+  for (let i = 0; i < 500; i++) {
+    graphClient
+      .V()
+      .has("num", "i", rand().toString())
+      .fold()
+      .coalesce(
+        unfold(),
+        addV("num").property("i", rand().toString())
+      ).as("parent")
+      .V()
+      .has("num", "i", (rand()).toString())
+      .fold()
+      .coalesce(
+        unfold(),
+        addV("num").property("i", (rand()).toString())
+      ).as("child")
+      .V()
+      .has("num", "i", rand().toString()).as("parent")
+      .V()
+      .has("num", "i", (rand()).toString()).as("child")
+      .coalesce(
+        inE().where(outV().as("parent")),
+        addE("double")
+          .from_("parent")
+          .property("i", (rand()).toString())
+      )
+      .toList()
+      .then(console.log)
+  }
+}
 
 async function start() {
   try {
@@ -39,14 +91,15 @@ async function start() {
       )),
     ).subscribe(() => console.log("Flushed"));
 
-    seedUrls.forEach(url => crawler.addSeed(new URL(url)));
     // handle de-duplication
     crawler.addSeed(new URL("https://stackoverflow.com"));
     crawler.addSeed(new URL("https://stackoverflow.com"));
     crawler.addSeed(new URL("https://stackoverflow.com"));
 
     // error handling case
-    crawler.addSeed(new URL(""));
+    //crawler.addSeed(new URL(""));
+
+    seedUrls.forEach(url => crawler.addSeed(new URL(url)));
   } catch (err) {
     console.error(`Unexpected error encountered: ${err}`);
   }
@@ -66,7 +119,7 @@ async function getSeed(): Promise<string[]> {
     .map(line => line.trim());
 }
 
-async function createGraphDBConnection(): Promise<GraphTraversalSource> {
+export async function createGraphDBConnection(): Promise<GraphTraversalSource> {
   const argv = require('yargs').argv;
   console.log(`Graph DB config file: ${argv["db-conf-file"]}`);
 
@@ -95,8 +148,8 @@ async function createGraphDBConnection(): Promise<GraphTraversalSource> {
 
     if (conf.clean === true) {
       // drop any pre-existing state
-      console.warn("Dropping Graph DB data.");
-      await g.V().drop().iterate();
+      //console.warn("Dropping Graph DB data.");
+      //await g.V().drop().iterate();
     }
     return g;
   }

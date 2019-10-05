@@ -1,0 +1,303 @@
+* {
+  box-sizing:border-box;
+}
+
+html, body {
+    margin:0;
+    height: 100%;
+    overflow: hidden;
+    font: 100% Verdana, sans-serif;
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    display:flex;
+    flex-direction:row;
+    overflow:visible;
+    width: 100%;
+    height: 8vh;
+    padding: 0.6vh 2vw;
+    z-index: 1;
+    background-color: #333;
+}
+
+.branding {
+    display:flex;
+    align-items:center;
+    width: 25%;
+}
+
+.branding a {
+    float: left;
+    display: flex;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 1vh 1.5vw;
+    text-decoration: none;
+}
+
+#logo-img-wrapper {
+    padding: 0;
+}
+
+.logo {
+    height: 4vh;
+    width: auto;
+}
+
+#logo-text-wrapper {
+    font-size: xx-large;
+    color: lightcoral;
+    overflow-wrap: none;
+    white-space: nowrap;
+}
+
+#navbar-margin {
+    margin-top: 8vh;
+    margin-left:8vh;
+    margin-right:8vh;
+}
+
+.search-container {
+    display:flex;
+    justify-self: center;
+    flex-direction:column;
+    align-content: flex-start;
+    align-items: flex-start;
+    position: relative;
+    padding: 1vh 1.5vw;
+    width:50%;
+    max-width: 400px;
+    text-align: center;
+    z-index:2;
+}
+
+#search-suggestions {
+    display: flex;
+    width: 100%;
+    justify-self: center;
+    flex-direction:column;
+    vertical-align: middle;
+    background-color: #f2f2f2;
+}
+
+.form-row {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+}
+
+.param-label {
+    padding:4px;
+    text-align: left;
+    color: lightcoral;
+}
+
+.search-param {
+    width: 50%;
+    padding: 0.35em;
+}
+
+.searchbox, input.parambox, select.parambox, p.parambox {
+    font-size: large;
+    height: 5vh;
+    width:100%;
+    white-space:nowrap;
+    text-overflow:clip;
+    padding:0.8em;
+    border:none;
+    border-radius: 0.4em;
+    color: #646464;
+    background-color: #464646;
+    z-index: 2;
+}
+
+input.searchbox{
+    color: #aaaaaa;
+}
+
+p.parambox {
+    height: auto;
+    align-items: center;
+    vertical-align: middle;
+    text-align: left;
+    /*text-align: center;*/
+    font-size: small;
+    border-radius: 0;
+    color: #aaaaaa;
+}
+
+p.parambox:hover {
+    height: auto;
+    align-items: center;
+    vertical-align: middle;
+    text-align: left;
+    /*text-align: center;*/
+    font-size: small;
+    border-radius: 0;
+}
+
+p.suggest {
+  width: 100%;
+  min-height: 4em;
+  margin: 0;
+  align-items: center;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  border-bottom: 1px solid #505050;
+  color: #505050;
+  background-color: #f2f2f2;
+}
+
+input.searchbox:focus, input.parambox:focus, select.parambox {
+    outline: none;
+    /*border: 0.25em solid #464646;*/
+    border-radius: 0.4em 0.4em 0 0;
+    box-shadow: 0 0 0.15em 0 #5a5a5a;
+}
+
+::placeholder {
+    /*border: 4px solid #646464;*/
+    color: #8c8c8c;
+}
+
+.search-container-hidden {
+    width: 10%;
+}
+
+.expensive-search-container-hidden {
+    width: 20%;
+}
+
+.search-criteria {
+    width: 100%;
+    /** element hidden until element style is set dynamically by js */
+    display:flex;
+    position: relative;
+    align-items:flex-start;
+    flex-direction:column;
+    background-color: #464646;
+    border-radius: 0.4em;
+    z-index: 2;
+}
+
+.search-criteria-hidden {
+    width: 0;
+    /** element hidden until element style is set dynamically by js */
+    display:none;
+    position: relative;
+    align-items:flex-start;
+    flex-direction:column;
+    background-color: #464646;
+    border-radius: 0.4em;
+    z-index: -1;
+}
+
+.search-options {
+    width: 100%;
+    align-items:flex-start;
+    flex-direction:column;
+    padding: 0.35em 1em 0.35em 1em;
+}
+
+#graph {
+    height:90%;
+    width:100%;
+}
+
+input.parambox, select.parambox {
+    font-size: large;
+    height: 5vh;
+    width:100%;
+    white-space:nowrap;
+    text-overflow:clip;
+    border:none;
+    border-radius: 0.4em;
+    background-color: #c8c8c8;
+    z-index: 2;
+}
+
+input.parambox:focus, select.parambox:focus {
+    outline: none;
+    /*border: 0.25em solid #464646;*/
+    border-radius: 0.4em 0.4em 0 0;
+    box-shadow: 0 0 0.15em 0 #5a5a5a;
+}
+
+.search-button {
+    font-size: x-large;
+    height: 7vh;
+    width:100%;
+    white-space:nowrap;
+    text-overflow:clip;
+    margin-top: 0.5em;
+    color: #f2f2f2;
+    background-color: lightcoral;
+    z-index: 3;
+    outline: none;
+    border: 0.1em solid #F06260;
+    box-shadow: 0 0 0.15em 0 #F06260;
+}
+
+/** apply a darker tint to clickable elements on hover **/
+.click:hover {
+    filter: brightness(0.95);
+}
+
+/** apply an even darker tint to clickable elements on hover (useful for lig**/
+.dark-click:hover {
+    filter: brightness(0.80);
+}
+
+.info-window {
+    display:flex;
+    flex-direction:column;
+}
+
+.info-window-title {
+    max-width: 25vw;
+    font-size: 125%;
+    text-decoration: none;
+    color: coral
+}
+
+.flatmates-photo {
+    max-width: 25vw;
+    max-height: 15vw;
+    padding: 0.5em;
+}
+
+.info-window-details {
+    margin: 0;
+    padding: 0;
+    max-width: 25vw;
+    max-height: 15vw;
+    font-size: 125%;
+    font-style: italic;
+    color: coral;
+}
+
+.info-window-details span {
+    font-size: 75%;
+    color: #5a5a5a;
+}
+
+.refine {
+    height: 5vh;
+    width: auto;
+}
+
+.refine-hidden {
+    height: 0;
+    width: 0;
+}
+
+/*
+ * Hack to hide "Use ctrl + scroll to zoom the map" overlay message on Google Map
+ * https://stackoverflow.com/a/52414981/5813962
+ */
+.gm-style-pbc {
+    opacity: 0 !important;
+}

@@ -38,10 +38,9 @@ main() {
   # Build frontend in watch mode
   nodemon \
     --ignore dist \
-    --ignore static \
     --ignore server \
-    --watch web/src \
-    --ext ts \
+    --watch web/ \
+    --ext "ts,html,css" \
     --exec "npm run build:web:${webpack_mode}" &
 
   # Build and deploy backend in watch mode

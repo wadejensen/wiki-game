@@ -1,4 +1,4 @@
-import {catchError, distinct, mergeMap} from "rxjs/operators";
+import {catchError, distinct, mergeMap, tap} from "rxjs/operators";
 import {from, of, Subject} from "rxjs";
 import {RateLimitedHTTPClient} from "./http/rate_limited_http_client";
 import {FetchHTTPClient} from "./http/fetch_http_client";
@@ -24,13 +24,14 @@ export class Crawler {
   }
 
   addSeed(url: URL) {
+    console.log(`Added seed ${url}`);
     this.source.next(url.href);
   }
 
   static create(): Crawler {
     const httpClient = new RateLimitedHTTPClient(
       new FetchHTTPClient(3000, 3, 300, true),
-      new LosslessThrottle(8),
+      new LosslessThrottle(3),
     );
     const localCrawlFn = (i: number, url: string) =>
       crawl(httpClient, i, url);

@@ -1,1 +1,42 @@
-console.log("Hello World");
+// @ts-ignore
+
+import {getGraph, getGraphLive} from "./endpoints";
+
+declare const sigma: any;
+
+console.log("Hello World!!");
+
+console.log(sigma);
+type Sigma = any;
+
+const s = new sigma(
+  {
+    renderers: [{
+      container: document.getElementById('graph'),
+      type: 'canvas'
+    }],
+    settings: {}
+  }
+);
+
+//renderGraph(s);
+
+setTimeout(() => renderGraphLive(s), 2000);
+
+async function renderGraph(s: Sigma): Promise<void> {
+  const data = await getGraph();
+  console.log(data);
+  s.graph.read(data);
+  s.startForceAtlas2();
+  window.setTimeout(function() {s.killForceAtlas2()}, 10000);
+  s.refresh();
+}
+
+async function renderGraphLive(s: Sigma): Promise<void> {
+  const data = await getGraphLive();
+  console.log(data);
+  s.graph.read(data);
+  s.startForceAtlas2();
+  window.setTimeout(function() {s.killForceAtlas2()}, 10000);
+  s.refresh();
+}
