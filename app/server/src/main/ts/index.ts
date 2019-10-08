@@ -20,10 +20,10 @@ const inE = process.statics.inE;
 const outE = process.statics.outE;
 
 new Server().start();
-populateGraph();
+//populateGraph();
 
 // setTimeout(() => sys.exit(0), 30000);
-// start();
+start();
 
 function rand(): number {
   return Math.floor(Math.random() * 100);
@@ -92,9 +92,9 @@ async function start() {
     ).subscribe(() => console.log("Flushed"));
 
     // handle de-duplication
-    crawler.addSeed(new URL("https://stackoverflow.com"));
-    crawler.addSeed(new URL("https://stackoverflow.com"));
-    crawler.addSeed(new URL("https://stackoverflow.com"));
+    // crawler.addSeed(new URL("https://stackoverflow.com"));
+    // crawler.addSeed(new URL("https://stackoverflow.com"));
+    // crawler.addSeed(new URL("https://stackoverflow.com"));
 
     // error handling case
     //crawler.addSeed(new URL(""));

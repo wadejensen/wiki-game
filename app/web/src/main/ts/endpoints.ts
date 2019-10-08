@@ -22,6 +22,17 @@ export async function getGraphLive(): Promise<graphmodel.Graph> {
     .catch(err => console.error(err));
 }
 
+export async function getGraphLive2(): Promise<graphmodel.Graph> {
+  return fetch(window.location + "graph-live2", {
+    method: "GET",
+    headers: {
+      "Content-Type": "Accept: application/json",
+    },
+  }).then(handleFailure)
+    .then(resp => resp.json())
+    .catch(err => console.error(err));
+}
+
 export async function googlePlacesAutocomplete(
   query: string
 ): Promise<any> {

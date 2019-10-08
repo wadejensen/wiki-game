@@ -1,6 +1,6 @@
 // @ts-ignore
 
-import {getGraph, getGraphLive} from "./endpoints";
+import {getGraph, getGraphLive, getGraphLive2} from "./endpoints";
 
 declare const sigma: any;
 
@@ -21,7 +21,7 @@ const s = new sigma(
 
 //renderGraph(s);
 
-setTimeout(() => renderGraphLive(s), 2000);
+setTimeout(() => renderGraphLive2(s), 10000);
 
 async function renderGraph(s: Sigma): Promise<void> {
   const data = await getGraph();
@@ -34,6 +34,15 @@ async function renderGraph(s: Sigma): Promise<void> {
 
 async function renderGraphLive(s: Sigma): Promise<void> {
   const data = await getGraphLive();
+  console.log(data);
+  s.graph.read(data);
+  s.startForceAtlas2();
+  window.setTimeout(function() {s.killForceAtlas2()}, 10000);
+  s.refresh();
+}
+
+async function renderGraphLive2(s: Sigma): Promise<void> {
+  const data = await getGraphLive2();
   console.log(data);
   s.graph.read(data);
   s.startForceAtlas2();

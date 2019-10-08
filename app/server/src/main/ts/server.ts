@@ -104,6 +104,43 @@ export class Server {
       res.send(data);
     });
 
+    app.get('/graph-live2', async (req: Request, res: Response) => {
+      const graphClient = await createGraphDBConnection();
+      const sg: graphson.GraphSON = await graphClient
+        .V()
+        .has("url", "href", "https://en.wikipedia.org/wiki/Main_Page")
+        .repeat(outE().subgraph('subGraph').inV()).times(3).cap('subGraph')
+        .next()
+        .then(r => r.value);
+      console.log(sg);
+
+      const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
+        return {
+          id: vert["@value"].id["@value"].toString(),
+          label: vert["@value"].properties["href"][0]["@value"].value,
+          x: Math.random(),
+          y: Math.random(),
+          color: "#000",
+          size: 5,
+        }
+      });
+
+      const edges: graphmodel.Edge[] = sg.edges.map((e: graphson.Edge) => {
+        return {
+          id: e["@value"].id["@value"].toString(),
+          label: e["@value"].label,
+          source: e["@value"].outV["@value"].toString(),
+          target: e["@value"].inV["@value"].toString(),
+          color: "#000",
+          size: 5,
+          type: "line",
+        }
+      });
+
+      const data: graphmodel.Graph = { nodes, edges };
+      res.send(data);
+    });
+
     app.listen(3000, () => console.log("Listening on port 3000"));
   }
 }
