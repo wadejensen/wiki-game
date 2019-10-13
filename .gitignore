@@ -5,3 +5,4 @@
 *.tfstate.backup
 .DS_Store
 *.iml
+dump.rdb

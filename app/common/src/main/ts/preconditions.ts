@@ -26,6 +26,24 @@ export class Preconditions {
   }
 
   /**
+   * Checks a state of a variable.
+   *
+   * @param {boolean} cond condition
+   * @param {string=} msg optional message template
+   * @param {...*} args optional arguments for the message template
+   * @throws {Error} if {@code cond} is falsey
+   */
+  static checkState(cond: false, msg?: string, ...args: any[]): never;
+  static checkState(cond: boolean, msg?: string, ...args: any[]): void;
+  static checkState(cond: boolean, msg?: string, ...args: any[]) {
+    if (!cond) {
+      throw new Error(msg == null
+        ? 'invalid state'
+        : Preconditions.format(msg, ...args));
+    }
+  }
+
+  /**
    * Formats a template by interpolating some arguments for {} placeholders.
    *
    * @param {string} template template

@@ -1,29 +1,11 @@
 import {Headers, HTTPClient} from "./http_client";
 import {Request, Response} from "node-fetch";
 import {FetchHTTPClient} from "./fetch_http_client";
-import {LosslessThrottle} from "../lossless_throttle";
+import {LosslessThrottle} from "../../../../../common/src/main/ts/throttle/lossless_throttle";
+import {LossyThrottle} from "../../../../../common/src/main/ts/throttle/lossy_throttle";
 
 export class RateLimitedHTTPClient implements HTTPClient{
-  static create({
-      requestTimeoutMs,
-      maxRetries,
-      backoffDelay,
-      exponentialBackoff,
-      maxReqPerSec,
-  }: {
-      requestTimeoutMs: number,
-      maxRetries: number,
-      backoffDelay: number,
-      exponentialBackoff: boolean,
-      maxReqPerSec: number,
-  }): RateLimitedHTTPClient {
-    return new RateLimitedHTTPClient(
-      new FetchHTTPClient(requestTimeoutMs, maxRetries, backoffDelay, exponentialBackoff),
-      new LosslessThrottle(maxReqPerSec),
-    );
-  }
-
-  constructor(readonly client: HTTPClient, readonly throttle: LosslessThrottle) {}
+  constructor(readonly client: HTTPClient, readonly throttle: LossyThrottle) {}
 
   get(url: string, headers?: Headers): Promise<Response> {
     return this.throttle.apply(() => this.client.get(url, headers));

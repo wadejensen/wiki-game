@@ -21,7 +21,7 @@ const s = new sigma(
 
 //renderGraph(s);
 
-setTimeout(() => renderGraphLive2(s), 10000);
+setInterval(() => renderGraphLive2(s), 7000);
 
 async function renderGraph(s: Sigma): Promise<void> {
   const data = await getGraph();

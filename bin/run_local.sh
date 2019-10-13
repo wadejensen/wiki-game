@@ -50,7 +50,7 @@ main() {
     --ignore web \
     --watch server/src \
     --ext ts \
-    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && npm run deploy --inpect -- --seed-file ${CRAWLER_SEED_FILE} --db-conf-file ${DB_CONF_FILE}"
+    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && npm run deploy -- --seed-file ${CRAWLER_SEED_FILE} --db-conf-file ${DB_CONF_FILE}"
 }
 
 main "$@"

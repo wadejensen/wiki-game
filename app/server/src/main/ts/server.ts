@@ -3,11 +3,11 @@ import express, {Request, Response} from "express";
 
 import {sys} from "typescript";
 import * as path from "path";
-import bodyParser = require("body-parser");
-import {createGraphDBConnection} from "./index";
 import {process} from "gremlin";
 import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
+import {graphClient} from "./server_module";
+import bodyParser = require("body-parser");
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -15,8 +15,14 @@ const fold = process.statics.fold;
 const unfold = process.statics.unfold;
 const inV = process.statics.inV;
 const outV = process.statics.outV;
+const out = process.statics.out;
 const inE = process.statics.inE;
+const bothE = process.statics.bothE;
+const both = process.statics.both;
 const outE = process.statics.outE;
+const property = process.statics.property;
+const desc = process.order.desc;
+const flatMap = process.statics.flatMap;
 
 /**
  * Server instance running on Express middleware
@@ -68,13 +74,12 @@ export class Server {
     });
 
     app.get('/graph-live', async (req: Request, res: Response) => {
-      const graphClient = await createGraphDBConnection();
-      const sg: graphson.GraphSON = await graphClient
+      const g = await graphClient();
+      const sg: graphson.GraphSON = await g.next((g) => g
         .V()
         .has("num", "i", "1")
         .repeat(outE().subgraph('subGraph').inV()).times(10).cap('subGraph')
-        .next()
-        .then(r => r.value);
+      ).then(r => r.value);
       console.log(sg);
 
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
@@ -105,19 +110,37 @@ export class Server {
     });
 
     app.get('/graph-live2', async (req: Request, res: Response) => {
-      const graphClient = await createGraphDBConnection();
-      const sg: graphson.GraphSON = await graphClient
-        .V()
-        .has("url", "href", "https://en.wikipedia.org/wiki/Main_Page")
-        .repeat(outE().subgraph('subGraph').inV()).times(3).cap('subGraph')
-        .next()
-        .then(r => r.value);
+      console.log("Start gremlin request");
+      const g = await graphClient();
+      const sg: graphson.GraphSON = await g.next((g) => g.
+        V().
+        has("name", "Main_Page").
+        repeat(
+          flatMap(
+            outE().
+            as("edges").
+            inV().
+            dedup().
+            order().by(bothE().count(), desc).
+            limit(10).
+            select("edges").
+            subgraph("subgraph").
+            inV()
+          ).
+          dedup()
+        ).
+        times(3).
+        simplePath().
+        cap("subgraph")
+      ).then(r => r.value);
+
       console.log(sg);
+      console.log("Stop gremlin request");
 
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
         return {
           id: vert["@value"].id["@value"].toString(),
-          label: vert["@value"].properties["href"][0]["@value"].value,
+          label: vert["@value"].properties["name"][0]["@value"].value,
           x: Math.random(),
           y: Math.random(),
           color: "#000",
@@ -138,6 +161,7 @@ export class Server {
       });
 
       const data: graphmodel.Graph = { nodes, edges };
+      console.log(data);
       res.send(data);
     });
 

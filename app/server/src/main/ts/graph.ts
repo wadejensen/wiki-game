@@ -15,7 +15,7 @@ const BATCH_SIZE = 100;
 export async function insertCrawlerRecord(graphClient: GraphTraversalSource, record: CrawlerRecord): Promise<void> {
   // Insert the parent node first and get its id
   const resp = await graphClient
-    .addV("url").as(record.parentUrl).property("href", record.parentUrl)
+    .addV("url").as(record.url).property("href", record.url)
     .next();
   const parentId: number = resp.value.id;
   // Create small batches of inserts because the Gremlin server doesn't like large requests

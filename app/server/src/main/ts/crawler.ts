@@ -1,91 +1,104 @@
-import {catchError, distinct, mergeMap, tap} from "rxjs/operators";
-import {from, of, Subject} from "rxjs";
-import {RateLimitedHTTPClient} from "./http/rate_limited_http_client";
-import {FetchHTTPClient} from "./http/fetch_http_client";
-import {LosslessThrottle} from "./lossless_throttle";
+import {catchError, mergeMap, mergeMapTo, share, tap} from "rxjs/operators";
+import {from, Observable, of, Subject, timer} from "rxjs";
 import {HTTPClient} from "./http/http_client";
 import * as Cheerio from "cheerio";
 import {URL} from "url";
 import {flatMap} from "./util";
+import {Preconditions} from "../../../../common/src/main/ts/preconditions";
+import {RemoteSet} from "./cache/remote_set";
+import {PriorityQueue} from "./cache/priority_queue";
+import {filterByPromise} from "filter-async-rxjs-pipe/dist/src";
 
 export class Crawler {
-  readonly source: Subject<string>;
-  readonly results: Subject<CrawlerRecord>;
-  readonly errors: Subject<CrawlerError>;
+  private readonly httpClient: HTTPClient;
+  private readonly crawlHistory: RemoteSet;
+  private readonly queue: PriorityQueue;
+  private readonly isValidUrl: (url: string) => boolean;
+  private readonly qps: number;
+
+  private isStarted: boolean = false;
+  source: Subject<CrawlerTask> = new Subject<CrawlerTask>();
+  results: Observable<CrawlerRecord> = new Observable<CrawlerRecord>();
+  errors: Subject<CrawlerError> = new Subject<CrawlerError>();
 
   constructor(
-    source: Subject<string>,
-    crawlerResults: Subject<CrawlerRecord>,
-    crawlerErrors: Subject<CrawlerError>,
+    httpClient: HTTPClient,
+    crawlerHistory: RemoteSet,
+    queue: PriorityQueue,
+    isValidUrl: (url: string) => boolean,
+    qps: number,
   ) {
-    this.source = source;
-    this.results = crawlerResults;
-    this.errors = crawlerErrors;
+    this.httpClient = httpClient;
+    this.crawlHistory = crawlerHistory;
+    this.queue = queue;
+    this.isValidUrl = isValidUrl;
+    this.qps = qps;
   }
 
   addSeed(url: URL) {
     console.log(`Added seed ${url}`);
-    this.source.next(url.href);
+    this.source.next(new CrawlerTask(url.href, 0));
   }
 
-  static create(): Crawler {
-    const httpClient = new RateLimitedHTTPClient(
-      new FetchHTTPClient(3000, 3, 300, true),
-      new LosslessThrottle(3),
-    );
-    const localCrawlFn = (i: number, url: string) =>
-      crawl(httpClient, i, url);
-    const remoteCrawlFn = (i: number, url: string) =>
-      Promise.reject("Not implemented");
-
-    const source = new Subject<string>();
-    const errors = new Subject<CrawlerError>();
-    const results = source.pipe(
-      //TODO(wadejensen) drain distinct buffer strategy to avoid hitting memory limits
-      distinct(),
-      //TODO(wadejensen) drain some of the pipeline to perform remote execution
-      mergeMap( (url, i) =>
+  async start() {
+    Preconditions.checkState(!this.isStarted, "Crawler has already been started");
+    this.isStarted = true;
+    this.results = this.source.pipe(
+      filterByPromise(async (task: CrawlerTask) =>
+        !(await this.crawlHistory.contains(task.url))),
+      mergeMap((task) =>
         from(
-          localCrawlFn(i, url)
-        ).pipe(catchError((err) => {
-          errors.next(new CrawlerError(i, url, err));
-          return of<CrawlerRecord>()
-        }))
+          this.crawl(task)
+        ).pipe(
+          catchError((err) => {
+            console.log(err);
+            this.errors.next(new CrawlerError(task.url, err));
+            return of<CrawlerRecord>()
+          })
+        )
       ),
-    ) as Subject<CrawlerRecord>;
-
-    // constantly feed crawler results back into the crawler
-    results.subscribe((record) =>
-      record.childUrls.forEach(
-        child => source.next(child)
-      )
+      tap((record) => this.crawlHistory.add(record.url)),
+      share(),
     );
 
-    return new Crawler(source, results, errors);
+    this.results.subscribe(async (record) => {
+      // Put crawler results onto a priority queue
+      const prioritizedChildren = record
+        .childUrls
+        .map(url => [record.degree + 1, url] as [number, string]);
+      await this.queue.add(prioritizedChildren);
+    });
+
+    // feedback priority queue results into crawler pipeline
+    timer(1000, 1000).pipe(
+      mergeMap(() => from(this.queue.popMin(this.qps))),
+      mergeMap((batch: [string, number][]) => from(batch)),
+    ).subscribe((entry: [string, number]) =>
+      this.source.next(new CrawlerTask(entry[0], entry[1]))
+    );
+
+    return this;
   }
-}
 
-async function crawl(
-  httpClient: HTTPClient,
-  i: number,
-  url: string
-): Promise<CrawlerRecord> {
-  const html = await httpClient
-    .get(url)
-    .then(resp => resp.text());
+  async crawl(task: CrawlerTask): Promise<CrawlerRecord> {
+    const html = await this.httpClient
+      .get(task.url)
+      .then(resp => resp.text());
 
-  // jQuery API reimplemented for Node
-  const document = Cheerio.load(html);
-  // scrape page for href links
-  const hrefs = document("[href]").map((i,tag) => tag.attribs["href"]).get();
-  const links = flatMap(((href: string) => normaliseHref(href, url)), hrefs);
-  return new CrawlerRecord(i, url, links);
+    // jQuery API reimplemented for Node
+    const document = Cheerio.load(html);
+    // scrape page for href links
+    const hrefs = document("[href]").map((i,tag) => tag.attribs["href"]).get();
+    const links: string[] = flatMap(((href: string) => normaliseHref(href, task.url)), hrefs);
+    return new CrawlerRecord(task.url, task.degree,
+      Array.from(new Set(links.filter(this.isValidUrl))));
+  }
 }
 
 function normaliseHref(href: string, sourceUrl: string): string[] {
   // Include only with "http" and "https" schemes
   if (href.startsWith("http://") || href.startsWith("https://")) {
-    return [href];
+    return [href.replace("http://", "https://")];
   } else if (href.match("[-a-zA-Z0-9]+://.*")) {
     // ignore unwanted url schemes
     return [];
@@ -98,10 +111,21 @@ function normaliseHref(href: string, sourceUrl: string): string[] {
   }
 }
 
+export class CrawlerTask {
+  constructor(
+    readonly url: string,
+    readonly degree: number,
+  ) {}
+
+  toString() {
+    return JSON.stringify(this, null, 2);
+  }
+}
+
 export class CrawlerRecord {
   constructor(
-    readonly i: number,
-    readonly parentUrl: string,
+    readonly url: string,
+    readonly degree: number,
     readonly childUrls: string[],
   ) {}
 
@@ -110,10 +134,8 @@ export class CrawlerRecord {
   }
 }
 
-
 export class CrawlerError {
   constructor(
-    readonly i: number,
     readonly url: string,
     readonly err: string,
   ) {}

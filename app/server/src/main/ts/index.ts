@@ -1,14 +1,14 @@
 import fs from "fs";
-import {sys} from "typescript";
-import {URL} from "url";
-import {Crawler, CrawlerRecord} from "./crawler";
-import {driver, process, structure} from "gremlin";
-import {catchError, mergeMap} from "rxjs/operators";
-import {insertCrawlerRecord} from "./graph";
-import {from, of} from "rxjs";
-import GraphTraversalSource = process.GraphTraversalSource;
-import Graph = structure.Graph;
+import {process, structure} from "gremlin";
+import {graphClient, redisClient, wikipediaCrawler} from "./server_module";
+import {CrawlerRecord} from "./crawler";
+import {insertCrawlerRecord} from "./graph2";
+// RxJS v6+
+import {from, Observable, of, Subject, Subscription} from "rxjs";
+import {catchError, mapTo, mergeMap, share, tap} from "rxjs/operators";
 import {Server} from "./server";
+import {URL} from "url";
+import {GremlinConnection} from "./graph/gremlin_connection";
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -19,62 +19,78 @@ const outV = process.statics.outV;
 const inE = process.statics.inE;
 const outE = process.statics.outE;
 
+// // setTimeout(() => sys.exit(0), 30000);
+// start();
+
+//emit value in 1s
+//const source: Observable<number> = timer(1000);
+
+// const source = new Observable(function(observer) {
+//   observer.next('https://en.wikipedia.org/wiki/Main_Page1');
+//   observer.next('https://en.wikipedia.org/wiki/Main_Page2');
+//   //observer.complete();
+// });
+
+const source = new Subject<string>();
+
+//log side effect, emit result
+const example: Observable<string> = source.pipe(
+  tap(() => console.log('***SIDE EFFECT***')),
+  mapTo('***RESULT***')
+);
+
+/*
+  ***NOT SHARED, SIDE EFFECT WILL BE EXECUTED TWICE***
+  output:
+  "***SIDE EFFECT***"
+  "***RESULT***"
+  "***SIDE EFFECT***"
+  "***RESULT***"
+*/
+const subscribe: Subscription = example.subscribe(val => console.log(val));
+const subscribeTwo: Subscription = example.subscribe(val => console.log(val));
+
+//share observable among subscribers
+const sharedExample = example.pipe(
+  tap(() => console.log('***SIDE EFFECT2***')),
+  mapTo("***RESULT2***"),
+  share()
+);
+/*
+  ***SHARED, SIDE EFFECT EXECUTED ONCE***
+  output:
+  "***SIDE EFFECT***"
+  "***RESULT***"
+  "***RESULT***"
+*/
+const subscribeThree: Subscription = sharedExample.subscribe(val => console.log(val));
+const subscribeFour: Subscription = sharedExample.subscribe(val => console.log(val));
+
+source.next("https://en.wikipedia.org/wiki/Main_Page");
+
+const conf = loadGraphDBConfig();
+
 new Server().start();
-//populateGraph();
-
-// setTimeout(() => sys.exit(0), 30000);
 start();
-
-function rand(): number {
-  return Math.floor(Math.random() * 100);
-}
-
-async function populateGraph(): Promise<void> {
-  const graphClient: GraphTraversalSource = await createGraphDBConnection();
-  graphClient.V().drop().iterate();
-
-  for (let i = 0; i < 500; i++) {
-    graphClient
-      .V()
-      .has("num", "i", rand().toString())
-      .fold()
-      .coalesce(
-        unfold(),
-        addV("num").property("i", rand().toString())
-      ).as("parent")
-      .V()
-      .has("num", "i", (rand()).toString())
-      .fold()
-      .coalesce(
-        unfold(),
-        addV("num").property("i", (rand()).toString())
-      ).as("child")
-      .V()
-      .has("num", "i", rand().toString()).as("parent")
-      .V()
-      .has("num", "i", (rand()).toString()).as("child")
-      .coalesce(
-        inE().where(outV().as("parent")),
-        addE("double")
-          .from_("parent")
-          .property("i", (rand()).toString())
-      )
-      .toList()
-      .then(console.log)
-  }
-}
 
 async function start() {
   try {
     const seedUrls = await getSeed();
     console.log(seedUrls);
 
-    const graphClient: GraphTraversalSource = await createGraphDBConnection();
-    const crawler = Crawler.create();
+    const redisConnection = redisClient();
+    console.log(await redisConnection.zpopmin("queue", 3));
+
+    await redisConnection.del("history");
+    await redisConnection.del("queue");
+    const gremlin: GremlinConnection = await graphClient();
+    gremlin.iterate((g) => g.V().drop());
+
+    const crawler = await wikipediaCrawler().start();
 
     // log crawler results
     crawler.results.subscribe((record: CrawlerRecord) => {
-      console.log(`${record.i}: ${record.parentUrl}: found ${record.childUrls.length} links.`)
+      console.log(`${record.url}: found ${record.childUrls.length} links.`)
     });
 
     // log crawler errors
@@ -83,7 +99,7 @@ async function start() {
     // flush crawler results to Graph DB
     crawler.results.pipe(
       mergeMap((record: CrawlerRecord) =>
-        from(insertCrawlerRecord(graphClient, record)).pipe(
+        from(insertCrawlerRecord(gremlin, record)).pipe(
         catchError((err) => {
           console.error(`Failed to write to Graph DB due to ${err}`);
           return of();
@@ -119,7 +135,7 @@ async function getSeed(): Promise<string[]> {
     .map(line => line.trim());
 }
 
-export async function createGraphDBConnection(): Promise<GraphTraversalSource> {
+async function loadGraphDBConfig(): Promise<any> {
   const argv = require('yargs').argv;
   console.log(`Graph DB config file: ${argv["db-conf-file"]}`);
 
@@ -134,23 +150,49 @@ export async function createGraphDBConnection(): Promise<GraphTraversalSource> {
   const conf = JSON.parse(dbConfigFile);
   if (conf.hostname === undefined && conf.port === undefined) {
     throw Error(`Invalid Gremlin config file contents: ${conf}`)
-  } else {
-    console.log("Creating connection");
-    const websocketPath = `ws://${conf.hostname}:${conf.port}/gremlin`;
-    // Note: The empty object {} is to work around a bug in the
-    // Gremlin JavaScript 3.3.5 and 3.4 clients.
-    const DriverRemoteConnection = driver.DriverRemoteConnection;
-    const connection = new DriverRemoteConnection(websocketPath, {});
-    const graph = new Graph();
-    console.log("Connecting to :" + websocketPath);
-    const g = graph.traversal().withRemote(connection);
-    console.log("Connection created");
-
-    if (conf.clean === true) {
-      // drop any pre-existing state
-      //console.warn("Dropping Graph DB data.");
-      //await g.V().drop().iterate();
-    }
-    return g;
   }
+  return conf;
 }
+
+// //populateGraph();
+//
+//
+// function rand(): number {
+//   return Math.floor(Math.random() * 100);
+// }
+//
+// async function populateGraph(): Promise<void> {
+//   const graphClient: GraphTraversalSource = await createGraphDBConnection();
+//   graphClient.V().drop().iterate();
+//
+//   for (let i = 0; i < 500; i++) {
+//     graphClient
+//       .V()
+//       .has("num", "i", rand().toString())
+//       .fold()
+//       .coalesce(
+//         unfold(),
+//         addV("num").property("i", rand().toString())
+//       ).as("parent")
+//       .V()
+//       .has("num", "i", (rand()).toString())
+//       .fold()
+//       .coalesce(
+//         unfold(),
+//         addV("num").property("i", (rand()).toString())
+//       ).as("child")
+//       .V()
+//       .has("num", "i", rand().toString()).as("parent")
+//       .V()
+//       .has("num", "i", (rand()).toString()).as("child")
+//       .coalesce(
+//         inE().where(outV().as("parent")),
+//         addE("double")
+//           .from_("parent")
+//           .property("i", (rand()).toString())
+//       )
+//       .toList()
+//       .then(console.log)
+//   }
+// }
+//

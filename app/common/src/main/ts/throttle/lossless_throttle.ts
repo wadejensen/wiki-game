@@ -1,5 +1,5 @@
-import {Async} from "./async";
 import {sys} from "typescript";
+import {Async} from "../async";
 
 export class LosslessThrottle {
   private reqCount = 0;
@@ -34,9 +34,7 @@ export class LosslessThrottle {
         this.reqCount += 1;
         return fn();
       } else {
-        const retval = await Async.delay(() => this.doThrottle(fn), 1000 / this.reqPerSec);
-
-        return retval;
+        return await Async.delay(() => this.doThrottle(fn), 1000 / this.reqPerSec);
       }
     };
 
