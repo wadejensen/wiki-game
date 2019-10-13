@@ -57,6 +57,8 @@ output "redis_cluster_address" {
 //  value = aws_elasticache_cluster.redis.connection
 //}
 
+# TODO need to get redis connection string from terraform
+
 output "redis_port" {
   value = aws_elasticache_cluster.redis.*.port
 }
