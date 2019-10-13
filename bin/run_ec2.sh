@@ -21,3 +21,13 @@ sudo apt-get install default-jdk
 # > g.addV("url").property("href", "en.wikipedia.com/wiki/Main_Page").property("name", "Main_Page").toList()
 # > g.V().limit(1)
 # > g.V().has("url", "name", "Main_Page").values()
+
+# Install node
+sudo apt-get install curl
+curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+sudo apt-get install nodejs
+
+npm install gremlin-javascript
+
+# Add gremlin-example.js
+node gremlinexample.js
