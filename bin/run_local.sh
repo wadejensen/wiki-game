@@ -28,6 +28,8 @@ main() {
   local webpack_mode
   webpack_mode=$1
 
+  CONF_FILE="${APP_HOME}/server/src/main/resources/wiki.${webpack_mode}.json"
+
   if [[ "${webpack_mode}" != "dev" && "${webpack_mode}" != "prod" ]]; then
     usage
     exit 1
@@ -50,7 +52,7 @@ main() {
     --ignore web \
     --watch server/src \
     --ext ts \
-    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && npm run deploy -- --seed-file ${CRAWLER_SEED_FILE} --db-conf-file ${DB_CONF_FILE}"
+    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && CONF_FILE=${CONF_FILE} npm run deploy -- --seed-file ${CRAWLER_SEED_FILE}"
 }
 
 main "$@"

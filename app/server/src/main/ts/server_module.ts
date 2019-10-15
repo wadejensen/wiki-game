@@ -14,29 +14,14 @@ import {LossyThrottle} from "../../../../common/src/main/ts/throttle/lossy_throt
 import {createGraphDBConnection} from "./graph/gremlin";
 import {RateLimitedGremlinConnection} from "./graph/rate_limited_gremlin_connection";
 import {GremlinConnection} from "./graph/gremlin_connection";
+import * as fs from "fs";
+import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 
-const conf = {
-  crawler: {
-    qps: 4,
-    timeout: 3000,
-    retries: 3,
-    backoffDelayMs: 300,
-    exponentialBackoff: true,
-  },
-  redis: {
-    host: "127.0.0.1",
-    port: 6379,
-    qps: 10000,
-    retries: 3,
-  },
-  gremlin: {
-    host: "localhost",
-    port: 8182,
-    clean: true,
-    qps: 200,
-    retries: 3,
-  }
-};
+const configFilePath: string = process.env["CONF_FILE"]!;
+console.log(`Reading config from: ${configFilePath}`);
+Preconditions.checkState(!!configFilePath);
+const conf: any = JSON.parse(fs.readFileSync(configFilePath, "utf-8"));
+console.log(conf);
 
 export function wikipediaCrawler(): Crawler {
   return new Crawler(

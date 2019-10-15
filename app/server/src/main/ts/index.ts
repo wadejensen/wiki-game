@@ -68,19 +68,14 @@ const subscribeFour: Subscription = sharedExample.subscribe(val => console.log(v
 
 source.next("https://en.wikipedia.org/wiki/Main_Page");
 
-const conf = loadGraphDBConfig();
-
 new Server().start();
 start();
 
 async function start() {
   try {
     const seedUrls = await getSeed();
-    console.log(seedUrls);
-
+    console.log(`Seed urls: \n${seedUrls}`);
     const redisConnection = redisClient();
-    console.log(await redisConnection.zpopmin("queue", 3));
-
     await redisConnection.del("history");
     await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
@@ -134,65 +129,3 @@ async function getSeed(): Promise<string[]> {
     .filter(line => line.length !== 0)
     .map(line => line.trim());
 }
-
-async function loadGraphDBConfig(): Promise<any> {
-  const argv = require('yargs').argv;
-  console.log(`Graph DB config file: ${argv["db-conf-file"]}`);
-
-  const dbConfigFilePath = argv["db-conf-file"];
-  if (dbConfigFilePath === undefined) {
-    throw Error(`Invalid Gremlin config file path: ${dbConfigFilePath}`)
-  }
-  const dbConfigFile = await fs
-    .promises
-    .readFile(dbConfigFilePath, "utf-8");
-
-  const conf = JSON.parse(dbConfigFile);
-  if (conf.hostname === undefined && conf.port === undefined) {
-    throw Error(`Invalid Gremlin config file contents: ${conf}`)
-  }
-  return conf;
-}
-
-// //populateGraph();
-//
-//
-// function rand(): number {
-//   return Math.floor(Math.random() * 100);
-// }
-//
-// async function populateGraph(): Promise<void> {
-//   const graphClient: GraphTraversalSource = await createGraphDBConnection();
-//   graphClient.V().drop().iterate();
-//
-//   for (let i = 0; i < 500; i++) {
-//     graphClient
-//       .V()
-//       .has("num", "i", rand().toString())
-//       .fold()
-//       .coalesce(
-//         unfold(),
-//         addV("num").property("i", rand().toString())
-//       ).as("parent")
-//       .V()
-//       .has("num", "i", (rand()).toString())
-//       .fold()
-//       .coalesce(
-//         unfold(),
-//         addV("num").property("i", (rand()).toString())
-//       ).as("child")
-//       .V()
-//       .has("num", "i", rand().toString()).as("parent")
-//       .V()
-//       .has("num", "i", (rand()).toString()).as("child")
-//       .coalesce(
-//         inE().where(outV().as("parent")),
-//         addE("double")
-//           .from_("parent")
-//           .property("i", (rand()).toString())
-//       )
-//       .toList()
-//       .then(console.log)
-//   }
-// }
-//

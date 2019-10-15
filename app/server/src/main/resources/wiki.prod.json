@@ -1,0 +1,22 @@
+{
+  "crawler": {
+    "qps": 4,
+    "timeout": 3000,
+    "retries": 3,
+    "backoffDelayMs": 300,
+    "exponentialBackoff": true
+  },
+  "redis": {
+    "host": "wiki-redis.xvtlzg.0001.apse2.cache.amazonaws.com",
+    "port": 6379,
+    "qps": 10000,
+    "retries": 3
+  },
+  "gremlin": {
+    "host": "tf-20191013222604839000000001.csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com",
+    "port": 8182,
+    "clean": true,
+    "qps": 200,
+    "retries": 3
+  }
+}
