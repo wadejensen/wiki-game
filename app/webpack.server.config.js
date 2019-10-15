@@ -1,8 +1,6 @@
 const path = require("path");
 const TerserPlugin = require('terser-webpack-plugin');
 
-const nodeExternals = require('webpack-node-externals');
-
 module.exports = [
     {
         entry: './server/src/main/ts/index.ts',
@@ -20,7 +18,6 @@ module.exports = [
                 }
             ]
         },
-        externals: [nodeExternals()],
         target: 'node',
         node: {
             __dirname: false,

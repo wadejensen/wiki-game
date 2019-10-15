@@ -1,0 +1,22 @@
+{
+  "crawler": {
+    "qps": 4,
+    "timeout": 3000,
+    "retries": 3,
+    "backoffDelayMs": 300,
+    "exponentialBackoff": true
+  },
+  "redis": {
+    "host": "host.docker.internal",
+    "port": 6379,
+    "qps": 10000,
+    "retries": 3
+  },
+  "gremlin": {
+    "host": "host.docker.internal",
+    "port": 8182,
+    "clean": true,
+    "qps": 200,
+    "retries": 3
+  }
+}
