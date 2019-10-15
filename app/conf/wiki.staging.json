@@ -7,13 +7,13 @@
     "exponentialBackoff": true
   },
   "redis": {
-    "host": "host.docker.internal",
+    "host": "bastion.host.name",
     "port": 6379,
     "qps": 10000,
     "retries": 3
   },
   "gremlin": {
-    "host": "host.docker.internal",
+    "host": "bastion.host.name",
     "port": 8182,
     "clean": true,
     "qps": 200,

@@ -7,13 +7,13 @@
     "exponentialBackoff": true
   },
   "redis": {
-    "host": "127.0.0.1",
+    "host": "host.docker.internal",
     "port": 6379,
     "qps": 10000,
     "retries": 3
   },
   "gremlin": {
-    "host": "localhost",
+    "host": "host.docker.internal",
     "port": 8182,
     "clean": true,
     "qps": 200,

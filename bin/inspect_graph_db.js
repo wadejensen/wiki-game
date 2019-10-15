@@ -11,7 +11,6 @@ const outV = gremlin.process.statics.outV;
 const inE = gremlin.process.statics.inE;
 const outE = gremlin.process.statics.outE;
 
-
 const Graph = gremlin.structure.Graph;
 const hostname = 'localhost';
 const port=8182;

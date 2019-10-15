@@ -7,9 +7,6 @@ set -o pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 APP_HOME="${REPO_ROOT}/app"
 
-CRAWLER_SEED_FILE="${APP_HOME}/server/src/main/resources/crawler_seed.txt"
-DB_CONF_FILE="${APP_HOME}/server/src/main/resources/gremlin.local.json"
-
 PROG=$(basename "$0")
 
 usage() {
@@ -28,7 +25,8 @@ main() {
   local webpack_mode
   webpack_mode=$1
 
-  CONF_FILE="${APP_HOME}/server/src/main/resources/wiki.${webpack_mode}.json"
+  CONF_FILE="${APP_HOME}/conf/wiki.${webpack_mode}.json"
+  SEED_FILE="${APP_HOME}/conf/crawler_seed.txt"
 
   if [[ "${webpack_mode}" != "dev" && "${webpack_mode}" != "prod" ]]; then
     usage
@@ -52,7 +50,7 @@ main() {
     --ignore web \
     --watch server/src \
     --ext ts \
-    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && CONF_FILE=${CONF_FILE} npm run deploy -- --seed-file ${CRAWLER_SEED_FILE}"
+    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && CONF_FILE=${CONF_FILE} SEED_FILE=${SEED_FILE} npm run deploy"
 }
 
 main "$@"
