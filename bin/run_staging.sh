@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 
 set -o errexit
-set -o nounset
 set -o pipefail
+set -o nounset
 
-export AWS_DEFAULT_REGION="ap-southeast-2"
+export AWS_PROFILE=wjensen
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+APP_HOME="${REPO_ROOT}/app"
+SCRIPTS="${REPO_ROOT}/bin"
+
+INFRA_HOME="${REPO_ROOT}/infra"
+VPC_INFRA_HOME="${INFRA_HOME}/vpc"
+CACHE_INFRA_HOME="${INFRA_HOME}/cache"
+PERSISTENCE_INFRA_HOME="${INFRA_HOME}/persistence"
 
 redis_host() {
   aws elasticache describe-cache-clusters \
@@ -36,52 +45,31 @@ neptune_port() {
     | tr -d '"'
 }
 
-config_file() {
-  cat <<EOF
-{
-  "crawler": {
-    "qps": 4,
-    "timeout": 3000,
-    "retries": 3,
-    "backoffDelayMs": 300,
-    "exponentialBackoff": true
-  },
-  "redis": {
-    "host": "wiki-redis.xvtlzg.0001.apse2.cache.amazonaws.com",
-    "port": 6379,
-    "qps": 10000,
-    "retries": 3
-  },
-  "gremlin": {
-    "host": "tf-20191013222604839000000001.csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com",
-    "port": 8182,
-    "clean": true,
-    "qps": 200,
-    "retries": 3
-  }
-}
-EOF
-}
-
-seed_file() {
-  echo 'https://en.wikipedia.org/wiki/Main_Page'
-}
-
 main() {
-  # write config files
-  HOST_CONF_DIR=~/conf
-  HOST_CONF_FILE="${HOST_CONF_DIR}/wiki.json"
-  HOST_SEED_FILE="${HOST_CONF_DIR}/crawler_seed.txt"
-  [[ -d "${HOST_CONF_DIR}" ]] || mkdir "${HOST_CONF_DIR}"
-  config_file > "${HOST_CONF_FILE}"
-  seed_file > "${HOST_SEED_FILE}"
+  if [[ ! -z "${SKIP_INFRA:+x}" ]]; then
+    echo 'Skipping infra deployment (SKIP_INFRA env var set)'
+  else
+    "${SCRIPTS}/infra.sh" deploy
+  fi
 
-  # Populate conf file with service locations for caching and persistence
+  HOST_CONF_DIR="${APP_HOME}/conf"
+  MOUNTED_CONF_DIR="/app/conf"
+  HOST_CONF_FILE="${HOST_CONF_DIR}/wiki.staging.json"
+  MOUNTED_CONF_FILE="${MOUNTED_CONF_DIR}/wiki.staging.json"
+
+  cd "${VPC_INFRA_HOME}"
+  BASTION_HOST="$(terraform output -state terraform.tfstate bastion_public_ip)"
+  ssh -i ~/Downloads/adhoc.pem "ubuntu@${BASTION_HOST}"
+
   REDIS_HOST="$(redis_host)"
   REDIS_PORT="$(redis_port)"
   NEPTUNE_HOST="$(neptune_host)"
   NEPTUNE_PORT="$(neptune_port)"
 
+  echo REDIS_HOST="${REDIS_HOST}"
+  echo REDIS_PORT="${REDIS_PORT}"
+  echo NEPTUNE_HOST="${NEPTUNE_HOST}"
+  echo NEPTUNE_PORT="${NEPTUNE_PORT}"
   # Rewrite config file to use new Redis and Neptune endpoints
   cat "${HOST_CONF_FILE}" \
   | jq ".redis.host = \"${REDIS_HOST}\" |
@@ -91,16 +79,27 @@ main() {
   > tmp && mv tmp "${HOST_CONF_FILE}"
 
   cat "${HOST_CONF_FILE}"
-  cat "${HOST_SEED_FILE}"
-
   MOUNTED_CONF_DIR="/app/conf"
-  sudo docker run \
+
+  exit 0
+
+  SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt"
+
+  cd "${APP_HOME}"
+  docker build -t wiki .
+
+  "${SCRIPTS}/run_local_graph_db.sh"
+  "${SCRIPTS}/run_local_redis.sh"
+
+  # Pause for supporting containers to spin up
+  sleep 2
+
+  docker run -it \
+    --env CONF_FILE="${CONF_FILE}" \
+    --env SEED_FILE="${SEED_FILE}" \
     --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}"\
-    --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
-    --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
     -p 3000:3000 \
-    wadejensen/wiki:latest
-    # \ > ~/server.log
+    wiki
 }
 
 main "$@"

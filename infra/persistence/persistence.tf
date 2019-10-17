@@ -55,3 +55,7 @@ resource "aws_neptune_subnet_group" "neptune" {
   name       = "wiki-neptune"
   subnet_ids = data.terraform_remote_state.vpc.outputs.subnet_public
 }
+
+output "neptune_endpoint" {
+  value = aws_neptune_cluster.neptune[local.count - 1].endpoint
+}

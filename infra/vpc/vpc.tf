@@ -13,6 +13,13 @@ variable "enabled" {
   default = false
 }
 
+data "terraform_remote_state" "iam" {
+  backend = "local"
+  config = {
+    path = "../iam/terraform.tfstate"
+  }
+}
+
 locals {
   azs = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
   count = "${var.enabled ? 1 : 0}"
@@ -121,7 +128,7 @@ resource "aws_security_group" "public" {
 
 resource "aws_security_group" "private" {
   count = local.count
-  vpc_id = "${aws_vpc.main[local.count - 1].id}"
+  vpc_id = aws_vpc.main[local.count - 1].id
   name = "private"
 
   // ALLOW 3000 from load balancer
@@ -130,7 +137,7 @@ resource "aws_security_group" "private" {
     to_port = 3000
     protocol = "tcp"
     security_groups = [
-      "${aws_security_group.public[count.index].id}"
+      aws_security_group.public[count.index].id
     ]
   }
 
@@ -145,60 +152,36 @@ resource "aws_security_group" "private" {
 
 resource "aws_instance" "bastion" {
   count = local.count
-  ami = "ami-0b76c3b150c6b1423"
+  # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
+  ami = "ami-00fb58ff31d5d8495"
   instance_type = "t2.micro"
   instance_initiated_shutdown_behavior = "terminate"
   key_name = "adhoc"
   vpc_security_group_ids = aws_security_group.public.*.id
   subnet_id = aws_subnet.public.*.id[0]
-  iam_instance_profile = aws_iam_role.bastion.id
-}
-
-resource "aws_iam_role" "bastion" {
-  name = "bastion"
-  assume_role_policy = data.aws_iam_policy_document.assume.json
-}
-
-data "aws_iam_policy_document" "assume" {
-  statement {
-    effect = "Allow"
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.amazonaws.com"
-      ]
-    }
-    actions = [
-      "sts:AssumeRole"
-    ]
-  }
-}
-
-resource "aws_iam_instance_profile" "bastion" {
-  name = "bastion"
-  role = "${aws_iam_role.bastion.name}"
+  iam_instance_profile = data.terraform_remote_state.iam.outputs.wiki_worker_instance_profile_id
 }
 
 output "bastion_public_ip" {
-  value = aws_instance.bastion.*.public_ip
+  value = length(aws_instance.bastion.*.public_ip) == 1 ? aws_instance.bastion.*.public_ip[0] : ""
 }
 
 output "vpc_id" {
-  value = "${aws_vpc.main.*.id}"
+  value = aws_vpc.main.*.id
 }
 
 output "subnet_public" {
-  value = "${aws_subnet.public.*.id}"
+  value = aws_subnet.public.*.id
 }
 
 output "subnet_private" {
-  value = "${aws_subnet.private.*.id}"
+  value = aws_subnet.private.*.id
 }
 
 output "security_group_public" {
-  value = "${aws_security_group.public.*.id}"
+  value = aws_security_group.public.*.id
 }
 
 output "security_group_private" {
-  value = "${aws_security_group.private.*.id}"
+  value = aws_security_group.private.*.id
 }

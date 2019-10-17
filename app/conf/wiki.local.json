@@ -7,14 +7,14 @@
     "exponentialBackoff": true
   },
   "redis": {
-    "host": "wiki-redis.xvtlzg.0001.apse2.cache.amazonaws.com",
-    "port": "6379",
+    "host": "localhost",
+    "port": 6379,
     "qps": 10000,
     "retries": 3
   },
   "gremlin": {
-    "host": "wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com",
-    "port": "8182",
+    "host": "127.0.0.1",
+    "port": 8182,
     "clean": true,
     "qps": 200,
     "retries": 3

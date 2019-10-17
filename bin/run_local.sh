@@ -6,34 +6,22 @@ set -o pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 APP_HOME="${REPO_ROOT}/app"
-
-PROG=$(basename "$0")
-
-usage() {
-  cat <<EOF
-Usage: "${PROG}" [dev|prod]
-Switching between "dev" and "prod" toggles webpack build optimization settings
-EOF
-}
+SCRIPTS="${REPO_ROOT}/bin"
 
 main() {
-  if [[ "$#" != 1 ]]; then
-    usage
-    exit 1
-  fi
+  local webpack_mode="dev"
 
-  local webpack_mode
-  webpack_mode=$1
-
-  CONF_FILE="${APP_HOME}/conf/wiki.${webpack_mode}.json"
-  SEED_FILE="${APP_HOME}/conf/crawler_seed.txt"
-
-  if [[ "${webpack_mode}" != "dev" && "${webpack_mode}" != "prod" ]]; then
-    usage
-    exit 1
-  fi
+  CONF_DIR="${APP_HOME}/conf"
+  CONF_FILE="${CONF_DIR}/wiki.local.json"
+  SEED_FILE="${CONF_DIR}/crawler_seed.txt"
 
   cd "${APP_HOME}"
+
+  "${SCRIPTS}/run_local_graph_db.sh"
+  "${SCRIPTS}/run_local_redis.sh"
+
+  # Pause for supporting containers to spin up
+  sleep 2
 
   # Build frontend in watch mode
   nodemon \

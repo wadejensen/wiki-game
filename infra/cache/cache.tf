@@ -49,20 +49,6 @@ resource "aws_elasticache_subnet_group" "redis" {
   subnet_ids = data.terraform_remote_state.vpc.outputs.subnet_public
 }
 
-output "redis_cluster_address" {
-  value = aws_elasticache_cluster.redis.*.cluster_address
-}
-
-//output "redis_connection" {
-//  value = aws_elasticache_cluster.redis.connection
-//}
-
-# TODO need to get redis connection string from terraform
-
-output "redis_port" {
-  value = aws_elasticache_cluster.redis.*.port
-}
-
-output "redis_id" {
-  value = aws_elasticache_cluster.redis.*.id
+output "redis_connection" {
+  value = aws_elasticache_cluster.redis[local.count - 1].cache_nodes[0]
 }

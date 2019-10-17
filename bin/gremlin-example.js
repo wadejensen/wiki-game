@@ -2,7 +2,9 @@ const gremlin = require("gremlin");
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
 const Graph = gremlin.structure.Graph;
 
-dc = new DriverRemoteConnection('wss://tf-20191013222604839000000001.csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin',{});
+const wsUrl = "wss://wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin";
+console.log(wsUrl);
+dc = new DriverRemoteConnection(wsUrl,{});
 
 const graph = new Graph();
 const g = graph.traversal().withRemote(dc);
