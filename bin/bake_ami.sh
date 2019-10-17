@@ -21,6 +21,7 @@ install_aws_cli() {
 main() {
   install_docker
   install_aws_cli
+  sudo apt-get install -y jq
 }
 
 main "$@"

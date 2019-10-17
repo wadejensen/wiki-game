@@ -99,8 +99,8 @@ main() {
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
     --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
     -p 3000:3000 \
-    wadejensen/wiki:latest
-    # \ > ~/server.log
+    wadejensen/wiki:latest \
+    > ~/server.log
 }
 
 main "$@"

@@ -5,7 +5,7 @@ terraform {
 variable "region" {}
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
   version = "2.21.1"
 }
 
@@ -22,8 +22,8 @@ data "terraform_remote_state" "iam" {
 
 locals {
   azs = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
-  count = "${var.enabled ? 1 : 0}"
-  subnet_count = "${var.enabled ? length(local.azs) : 0}"
+  count = var.enabled ? 1 : 0
+  subnet_count = var.enabled ? length(local.azs) : 0
 }
 
 resource "aws_vpc" "main" {
@@ -37,16 +37,16 @@ resource "aws_vpc" "main" {
 
 resource "aws_internet_gateway" "gw" {
   count = local.count
-  vpc_id = "${aws_vpc.main[count.index].id}"
+  vpc_id = aws_vpc.main[count.index].id
 }
 
 resource "aws_route_table" "public" {
   count = local.count
-  vpc_id = "${aws_vpc.main[count.index].id}"
+  vpc_id = aws_vpc.main[count.index].id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = "${aws_internet_gateway.gw[count.index].id}"
+    gateway_id = aws_internet_gateway.gw[count.index].id
   }
 }
 
@@ -57,23 +57,23 @@ resource "aws_eip" "nat" {
 
 resource "aws_nat_gateway" "nat" {
   count = local.count
-  allocation_id = "${aws_eip.nat[count.index].id}"
-  subnet_id = "${aws_subnet.public[count.index].id}"
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id = aws_subnet.public[count.index].id
 }
 
 resource "aws_route_table" "private" {
   count = local.count
-  vpc_id = "${aws_vpc.main[count.index].id}"
+  vpc_id = aws_vpc.main[count.index].id
 
   route {
     cidr_block = "0.0.0.0/0"
-    nat_gateway_id = "${aws_nat_gateway.nat[count.index].id}"
+    nat_gateway_id = aws_nat_gateway.nat[count.index].id
   }
 }
 
 resource "aws_subnet" "public" {
   count = local.subnet_count
-  vpc_id = "${aws_vpc.main[local.count - 1].id}"
+  vpc_id = aws_vpc.main[local.count - 1].id
   cidr_block = "10.0.${count.index + length(local.azs)}.0/24"
   availability_zone = local.azs[count.index]
   map_public_ip_on_launch = true
@@ -84,13 +84,13 @@ resource "aws_subnet" "public" {
 
 resource "aws_route_table_association" "public" {
   count = local.subnet_count
-  subnet_id = "${aws_subnet.public[count.index].id}"
-  route_table_id = "${aws_route_table.public[local.count -1].id}"
+  subnet_id = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public[local.count - 1].id
 }
 
 resource "aws_subnet" "private" {
   count = local.subnet_count
-  vpc_id = "${aws_vpc.main[local.count - 1].id}"
+  vpc_id = aws_vpc.main[local.count - 1].id
   cidr_block = "10.0.${count.index}.0/24"
   availability_zone = local.azs[count.index]
   tags = {
@@ -100,13 +100,13 @@ resource "aws_subnet" "private" {
 
 resource "aws_route_table_association" "private_aa" {
   count = local.subnet_count
-  subnet_id = "${aws_subnet.private[count.index].id}"
-  route_table_id = "${aws_route_table.private[local.count - 1].id}"
+  subnet_id = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[local.count - 1].id
 }
 
 resource "aws_security_group" "public" {
   count = local.count
-  vpc_id = "${aws_vpc.main[count.index].id}"
+  vpc_id = aws_vpc.main[count.index].id
   name = "public"
 
   // ALLOW all ingress
@@ -153,7 +153,7 @@ resource "aws_security_group" "private" {
 resource "aws_instance" "bastion" {
   count = local.count
   # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
-  ami = "ami-00fb58ff31d5d8495"
+  ami = "ami-0c59395006484f97a"
   instance_type = "t2.micro"
   instance_initiated_shutdown_behavior = "terminate"
   key_name = "adhoc"
