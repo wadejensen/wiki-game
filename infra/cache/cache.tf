@@ -50,5 +50,5 @@ resource "aws_elasticache_subnet_group" "redis" {
 }
 
 output "redis_connection" {
-  value = aws_elasticache_cluster.redis[local.count - 1].cache_nodes[0]
+  value = length(aws_elasticache_cluster.redis) == 1 ? aws_elasticache_cluster.redis[0].cache_nodes[0] : {}
 }

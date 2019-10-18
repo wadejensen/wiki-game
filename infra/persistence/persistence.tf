@@ -46,7 +46,7 @@ resource "aws_neptune_cluster_instance" "neptune" {
   count              = local.count
   cluster_identifier = aws_neptune_cluster.neptune[count.index].id
   engine             = "neptune"
-  instance_class     = "db.r4.large"
+  instance_class     = "db.r5.12xlarge"
   apply_immediately  = true
 }
 
@@ -57,5 +57,5 @@ resource "aws_neptune_subnet_group" "neptune" {
 }
 
 output "neptune_endpoint" {
-  value = aws_neptune_cluster.neptune[local.count - 1].endpoint
+  value = length(aws_neptune_cluster.neptune) == 1 ? aws_neptune_cluster.neptune[0].endpoint : ""
 }
