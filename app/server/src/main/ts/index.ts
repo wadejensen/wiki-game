@@ -10,6 +10,7 @@ import {Server} from "./server";
 import {URL} from "url";
 import {GremlinConnection} from "./graph/gremlin_connection";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
+import {sys} from "typescript";
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -31,13 +32,12 @@ async function start() {
     await redisConnection.del("history");
     await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
-    gremlin.iterate((g) => g.V().drop());
-
+    //await resetGraphDb(gremlin, 0);
     const crawler = await wikipediaCrawler().start();
 
     // log crawler results
     crawler.results.subscribe((record: CrawlerRecord) => {
-      console.log(`${record.url}: found ${record.childUrls.length} links.`)
+      console.log(`${record.url}: deg ${record.degree}, found ${record.childUrls.length} links.`)
     });
 
     // log crawler errors
@@ -54,11 +54,6 @@ async function start() {
         tap((x) => console.log(Math.random())),
       )
       .subscribe(() => console.log("Flushed"));
-
-
-      // )),
-      // tap( x => console.log("We got here"))
-    //).subscribe(() => console.log("Flushed"));
 
     // handle de-duplication
     // crawler.addSeed(new URL("https://stackoverflow.com"));
@@ -83,4 +78,19 @@ function getSeed(): string[] {
     .split("\n")
     .filter(line => line.length !== 0)
     .map(line => line.trim());
+}
+
+async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void> {
+  try {
+    if (i > 10) {
+      console.error("Failed to clear graph db state");
+      sys.exit(1);
+      return
+    }
+    console.log("Dropping vertices and edges...");
+    await gremlin.iterate((g) => g.V().drop());
+  } catch (err) {
+    console.error(err);
+    await resetGraphDb(gremlin, i + 1);
+  }
 }

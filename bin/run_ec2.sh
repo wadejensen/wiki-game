@@ -48,13 +48,12 @@ config_file() {
   },
   "redis": {
     "host": "wiki-redis.xvtlzg.0001.apse2.cache.amazonaws.com",
-    "port": 6379,
+    "port": "6379",
     "qps": 10000,
     "retries": 3
   },
   "gremlin": {
-    "host": "tf-20191013222604839000000001.csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com",
-    "port": 8182,
+    "connection": "wss://wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin",
     "clean": true,
     "qps": 200,
     "retries": 3
@@ -86,16 +85,17 @@ main() {
   cat "${HOST_CONF_FILE}" \
   | jq ".redis.host = \"${REDIS_HOST}\" |
         .redis.port = \"${REDIS_PORT}\" |
-        .gremlin.host = \"${NEPTUNE_HOST}\" |
-        .gremlin.port = \"${NEPTUNE_PORT}\"" \
-  > tmp && mv tmp "${HOST_CONF_FILE}"
+        .gremlin.connection = \"wss://${NEPTUNE_HOST}:${NEPTUNE_PORT}/gremlin\"" \
+  > tmp && \
+  mv tmp "${HOST_CONF_FILE}"
 
   cat "${HOST_CONF_FILE}"
   cat "${HOST_SEED_FILE}"
 
   MOUNTED_CONF_DIR="/app/conf"
+  echo 'Starting docker container'
   sudo docker run \
-    --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}"\
+    --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}" \
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
     --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
     -p 3000:3000 \

@@ -20,6 +20,7 @@
     "build:web:dev": "webpack --config webpack.web.config.js --mode development && cp -r static dist",
     "package": "npm run build:server:prod && npm run build:web:prod",
     "test": "jest",
+    "deploy-local": "node --inspect dist/index.js",
     "deploy": "node dist/index.js"
   },
   "devDependencies": {

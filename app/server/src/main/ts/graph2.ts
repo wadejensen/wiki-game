@@ -22,14 +22,14 @@ const BATCH_SIZE = 20;
 export async function insertCrawlerRecord(
     graphClient: GremlinConnection,
     record: CrawlerRecord
-): Promise<void> {
+): Promise<void[]> {
   // Create small batches of inserts because the Gremlin server doesn't like large requests
   const batchesOfChildren: string[][] = partition(record.childUrls, BATCH_SIZE);
   const insertChildrenQueries: GrelimQueryBuilder[] = batchesOfChildren.map(
     (children: string[]) => buildInsertChildrenQuery(record, children));
 
-  // then insert batches of children concurrently
-  await Promise.all(insertChildrenQueries.map(query => graphClient.iterate(query)));
+  // then insert batches of children sequentially
+  return Promise.all(insertChildrenQueries.map(async (query) => await graphClient.iterate(query)));
 }
 
 // Lazily build batch insert query

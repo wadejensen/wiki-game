@@ -1,6 +1,6 @@
 {
   "crawler": {
-    "qps": 4,
+    "qps": 8,
     "timeout": 3000,
     "retries": 3,
     "backoffDelayMs": 300,

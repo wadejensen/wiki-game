@@ -41,7 +41,6 @@ resource "aws_neptune_cluster" "neptune" {
   port = 8182
 }
 
-
 resource "aws_neptune_cluster_instance" "neptune" {
   count              = local.count
   cluster_identifier = aws_neptune_cluster.neptune[count.index].id

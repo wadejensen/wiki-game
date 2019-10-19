@@ -25,6 +25,9 @@ console.log("Connection created");
 
 g.V().drop();
 
+setInterval(() => g.V().count().toList().then(console.log), 2000)
+g.V().count().toList().then(console.log)
+
 for (let i = 0; i < 100; i++) {
     g
         .V()
