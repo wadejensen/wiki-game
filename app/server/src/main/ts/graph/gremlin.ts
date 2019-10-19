@@ -4,16 +4,13 @@ import Graph = structure.Graph;
 
 
 export async function createGraphDBConnection({
-  hostname,
-  port,
+  websocketPath,
   clean,
 }: {
-  hostname: string,
-  port: number,
+  websocketPath: string,
   clean: boolean,
 }): Promise<GraphTraversalSource> {
   console.log("Creating connection");
-  const websocketPath = `wss://${hostname}:${port}/gremlin`;
   // Note: The empty object {} is to work around a bug in the
   // Gremlin JavaScript 3.3.5 and 3.4 clients.
   const DriverRemoteConnection = driver.DriverRemoteConnection;

@@ -5,7 +5,7 @@ import {CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph2";
 // RxJS v6+
 import {from, Observable, of, Subject, Subscription} from "rxjs";
-import {catchError, mapTo, mergeMap, share, tap} from "rxjs/operators";
+import {catchError, concatMap, mapTo, mergeMap, share, tap} from "rxjs/operators";
 import {Server} from "./server";
 import {URL} from "url";
 import {GremlinConnection} from "./graph/gremlin_connection";
@@ -27,7 +27,7 @@ async function start() {
   try {
     const seedUrls = getSeed();
     console.log(`Seed urls: \n${seedUrls}`);
-    const redisConnection = redisClient();
+    const redisConnection = redisClient("debugger");
     await redisConnection.del("history");
     await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
@@ -45,14 +45,20 @@ async function start() {
 
     // flush crawler results to Graph DB
     crawler.results.pipe(
-      mergeMap((record: CrawlerRecord) =>
-        from(insertCrawlerRecord(gremlin, record)).pipe(
+        tap((record: CrawlerRecord) => console.log(record.childUrls.length)),
+        concatMap((record: CrawlerRecord) => from(insertCrawlerRecord(gremlin, record))),
         catchError((err) => {
           console.error(`Failed to write to Graph DB due to ${err}`);
           return of();
-        })
-      )),
-    ).subscribe(() => console.log("Flushed"));
+        }),
+        tap((x) => console.log(Math.random())),
+      )
+      .subscribe(() => console.log("Flushed"));
+
+
+      // )),
+      // tap( x => console.log("We got here"))
+    //).subscribe(() => console.log("Flushed"));
 
     // handle de-duplication
     // crawler.addSeed(new URL("https://stackoverflow.com"));

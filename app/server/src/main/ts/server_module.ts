@@ -46,17 +46,17 @@ function httpClient(): HTTPClient {
 }
 
 function crawlerHistory(): RemoteSet {
-  return new RedisSet(redisClient(), "history")
+  return new RedisSet(redisClient("redisHistory"), "history")
 }
 
 function crawlerPriorityQueue(): PriorityQueue {
-  return new RedisPriorityQueue(redisClient(), "queue");
+  return new RedisPriorityQueue(redisClient("redisQueue"), "queue");
 }
 
-export function redisClient(): RedisClient {
+export function redisClient(name: string): RedisClient {
   return new RateLimitedRedisClient(
     AsyncRedisClient.create({ host: conf.redis.host, port: conf.redis.port }),
-    new LossyThrottle("redisClient", conf.redis.qps,
+    new LossyThrottle(name, conf.redis.qps,
       conf.redis.retries),
   );
 }
@@ -64,8 +64,7 @@ export function redisClient(): RedisClient {
 export async function graphClient(): Promise<GremlinConnection> {
   return new RateLimitedGremlinConnection(
     await createGraphDBConnection({
-      hostname: conf.gremlin.host,
-      port: conf.gremlin.port,
+      websocketPath: conf.gremlin.connection,
       clean: conf.gremlin.clean,
     }),
     new LossyThrottle("gremlinClient", conf.gremlin.qps, 3),

@@ -13,8 +13,7 @@
     "retries": 3
   },
   "gremlin": {
-    "host": "127.0.0.1",
-    "port": 8182,
+    "connection": "ws://127.0.0.1:8182/gremlin",
     "clean": true,
     "qps": 200,
     "retries": 3
