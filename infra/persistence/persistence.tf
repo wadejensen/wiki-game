@@ -46,7 +46,7 @@ resource "aws_neptune_cluster_instance" "neptune" {
   count              = local.count
   cluster_identifier = aws_neptune_cluster.neptune[count.index].id
   engine             = "neptune"
-  instance_class     = "db.r5.12xlarge"
+  instance_class     = "db.r4.large"
   apply_immediately  = true
 }
 
