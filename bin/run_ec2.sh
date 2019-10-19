@@ -94,6 +94,7 @@ main() {
 
   MOUNTED_CONF_DIR="/app/conf"
   echo 'Starting docker container'
+  sudo docker pull wadejensen/wiki:latest
   sudo docker run \
     --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}" \
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \

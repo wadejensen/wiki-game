@@ -127,4 +127,23 @@ export class Async {
       }
     });
   }
+
+  static async reduceSerial<T, U>(
+    xs: T[],
+    fn: (t: T) => Promise<U>,
+    errHandler: (e: any) => Promise<U>,
+    initial: Promise<U>
+  ): Promise<U> {
+    let i = 0;
+    return xs.reduce((accumulatorPromise: Promise<U>, x) => {
+      console.log("Before");
+      console.log(i++);
+      const ret = accumulatorPromise
+        .then(() => fn(x))
+        .catch(errHandler);
+      console.log(i);
+      console.log("After");
+      return ret;
+    }, initial);
+  }
 }

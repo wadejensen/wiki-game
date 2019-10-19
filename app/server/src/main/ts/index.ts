@@ -2,7 +2,7 @@ import fs from "fs";
 import * as gremlin from "gremlin";
 import {graphClient, redisClient, wikipediaCrawler} from "./server_module";
 import {CrawlerRecord} from "./crawler";
-import {insertCrawlerRecord} from "./graph2";
+import {insertCrawlerRecord} from "./graph";
 // RxJS v6+
 import {from, Observable, of, Subject, Subscription} from "rxjs";
 import {catchError, concatMap, mapTo, mergeMap, share, tap} from "rxjs/operators";
@@ -22,7 +22,13 @@ const inE = gremlin.process.statics.inE;
 const outE = gremlin.process.statics.outE;
 
 new Server().start();
-start();
+try {
+  start();
+} catch (err) {
+  console.error(err);
+  sys.exit();
+}
+
 
 async function start() {
   try {
@@ -32,7 +38,7 @@ async function start() {
     await redisConnection.del("history");
     await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
-    //await resetGraphDb(gremlin, 0);
+    await resetGraphDb(gremlin, 0);
     const crawler = await wikipediaCrawler().start();
 
     // log crawler results

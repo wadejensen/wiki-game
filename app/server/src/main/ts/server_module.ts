@@ -70,3 +70,7 @@ export async function graphClient(): Promise<GremlinConnection> {
     new LossyThrottle("gremlinClient", conf.gremlin.qps, 3),
   );
 }
+
+export function gremlinBatchSize(): number {
+  return conf.gremlin.batchSize;
+}

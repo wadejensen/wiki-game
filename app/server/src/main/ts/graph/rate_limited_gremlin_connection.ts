@@ -15,11 +15,9 @@ export class RateLimitedGremlinConnection implements GremlinConnection {
     this.g = g as unknown as GraphTraversal;
   }
 
-  iterate(
-    queryBuilder: GrelimQueryBuilder
-  ): Promise<void> {
-    return this.throttle.apply(() => queryBuilder(this.g).iterate());
-  }
+  iterate: (queryBuilder: GrelimQueryBuilder) => Promise<void> =
+    (queryBuilder: GrelimQueryBuilder) =>
+      this.throttle.apply(() => queryBuilder(this.g).iterate());
 
   toList(
     queryBuilder: GrelimQueryBuilder
