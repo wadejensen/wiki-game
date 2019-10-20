@@ -39,7 +39,7 @@ resource "aws_instance" "graph_db" {
   count = local.count
   # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
   ami = "ami-0c59395006484f97a"
-  instance_type = "m5.2xlarge"
+  instance_type = "c5.2xlarge"
   instance_initiated_shutdown_behavior = "terminate"
   key_name = "adhoc"
   vpc_security_group_ids = data.terraform_remote_state.vpc.outputs.security_group_public

@@ -114,7 +114,7 @@ resource "aws_launch_configuration" "ec2_conf" {
   name_prefix = "wiki-conf-"
   # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
   image_id = "ami-0c59395006484f97a"
-  instance_type = "t2.micro"
+  instance_type = "t2.nano"
   key_name = "adhoc"
   user_data = file("${path.module}/../../bin/run_ec2.sh")
 
