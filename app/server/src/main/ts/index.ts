@@ -103,7 +103,9 @@ async function start() {
 
     logger.info("Drop all vertices");
     //await gremlin.iterate((g: GraphTraversal) => g.V().drop());
-    await gremlin.toList(vertexCountQuery).then(logger.info);
+    await gremlin
+      .toList(vertexCountQuery)
+      .then(cntArr => logger.info(`Num vertices = ${cntArr[0]}`));
 
     logger.info("Schedule vertex count");
     setInterval(() => gremlin.toList(vertexCountQuery).then(logger.info), 1000);
@@ -132,7 +134,6 @@ async function start() {
           console.error(`Failed to write to Graph DB due to ${err} ${err.stack}`);
           return of();
         }),
-        tap((x) => logger.info(Math.random().toString())),
       )
       .subscribe(() => logger.info("Flushed"));
 
