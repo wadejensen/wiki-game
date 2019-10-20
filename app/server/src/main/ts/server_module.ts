@@ -12,11 +12,12 @@ import {RedisClient} from "./cache/redis_client";
 import {AsyncRedisClient} from "./cache/async_redis_client";
 import {LossyThrottle} from "../../../../common/src/main/ts/throttle/lossy_throttle";
 import {createGraphDBConnection} from "./graph/gremlin";
-import {RateLimitedGremlinConnection} from "./graph/rate_limited_gremlin_connection";
+import {RateLimitedGremlinConnectionPool} from "./graph/rate_limited_gremlin_connection";
 import {GremlinConnection} from "./graph/gremlin_connection";
 import * as fs from "fs";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {logger} from "../../../../common/src/main/ts/logger";
+import {range} from "../../../../common/src/main/ts/fp/array";
 
 const configFilePath: string = process.env["CONF_FILE"]!;
 logger.info(`Reading config from: ${configFilePath}`);
@@ -63,21 +64,15 @@ export function redisClient(name: string): RedisClient {
 }
 
 export async function graphClient(): Promise<GremlinConnection> {
-  return new RateLimitedGremlinConnection(
-    await createGraphDBConnection({
-      websocketPath: conf.gremlin.connection,
-      clean: conf.gremlin.clean,
-    }),
-    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3, true),
-  );
-}
-
-//TODO(wadejensen) delete this once finished debugging
-export async function createGraphDB() {
-  return await createGraphDBConnection({
+  const connections = await Promise.all(range(0, 9).map(() => createGraphDBConnection({
     websocketPath: conf.gremlin.connection,
     clean: conf.gremlin.clean,
-  })
+  })));
+
+  return new RateLimitedGremlinConnectionPool(
+    connections,
+    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3, true),
+  );
 }
 
 export function gremlinBatchSize(): number {

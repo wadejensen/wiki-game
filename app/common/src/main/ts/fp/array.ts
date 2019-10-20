@@ -21,6 +21,6 @@ export function partition<T>(xs: T[], size: number): T[][] {
     .map(i => xs.slice(i * size, (i + 1) * size))
 }
 
-function range(start: number, finish: number) {
+export function range(start: number, finish: number) {
   return Array.from({length: finish-start}, (value, key) => start + key)
 }

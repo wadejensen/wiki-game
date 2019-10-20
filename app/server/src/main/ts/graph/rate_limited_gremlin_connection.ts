@@ -5,23 +5,28 @@ import GraphTraversalSource = process.GraphTraversalSource;
 import Traverser = process.Traverser;
 import {GremlinQueryBuilder, GremlinConnection} from "./gremlin_connection";
 
-export class RateLimitedGremlinConnection implements GremlinConnection {
-  readonly g: GraphTraversal;
+export class RateLimitedGremlinConnectionPool implements GremlinConnection {
+  readonly gs: GraphTraversal[];
 
   constructor(
-    g: GraphTraversalSource,
+    gs: GraphTraversalSource[],
     readonly throttle: LossyThrottle,
   ) {
-    this.g = g as unknown as GraphTraversal;
+    this.gs = gs as unknown as GraphTraversal[];
   }
 
   iterate: (queryBuilder: GremlinQueryBuilder) => Promise<void> =
     (queryBuilder: GremlinQueryBuilder) =>
-      this.throttle.apply(() => queryBuilder(this.g).iterate());
+      this.throttle.apply(() => queryBuilder(this.getConnection()).iterate());
 
   toList: (queryBuilder: GremlinQueryBuilder) => Promise<Traverser[]> =
-    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.g).toList();
+    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.getConnection()).toList();
 
   next: (queryBuilder: GremlinQueryBuilder) => Promise<{ value: any; done: boolean; }> =
-    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.g).next();
+    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.getConnection()).next();
+
+  private getConnection() {
+    const i = Math.floor(Math.random() * this.gs.length);
+    return this.gs[i];
+  }
 }
