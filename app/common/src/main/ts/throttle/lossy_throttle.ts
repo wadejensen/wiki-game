@@ -9,20 +9,29 @@ export class LossyThrottle {
   private reqCount = 0;
   private queueDepth = 0;
   private readonly maxRetries: number;
+  private readonly debug: boolean;
 
   /**
    * @param name of the throttle
    * @param reqPerSec number of requests allowed per second
    * @param maxRetries
    */
-  constructor(readonly name: string, readonly reqPerSec: number, maxRetries: number) {
+  constructor(
+      readonly name: string,
+      readonly reqPerSec: number,
+      maxRetries: number,
+      debug: boolean = false,
+  ) {
     setInterval(this.resetReqCount, 1000);
     this.name = name;
     this.maxRetries = maxRetries;
+    this.debug = debug;
   }
 
   private resetReqCount = async () => {
-    console.log(`Throttle ${this.name}: ${this.reqCount}qps`);
+    if (this.debug) {
+      console.debug(`Throttle ${this.name}: ${this.reqCount}qps`);
+    }
     if (this.reqCount != 0 && this.queueDepth != 0) {
       // We should never exceed reqPerSec, but if we do, bring the server down
       if (this.reqCount > this.reqPerSec) sys.exit(1);

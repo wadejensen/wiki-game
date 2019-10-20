@@ -3,7 +3,7 @@ import {LossyThrottle} from "../../../../../common/src/main/ts/throttle/lossy_th
 import GraphTraversal = process.GraphTraversal;
 import GraphTraversalSource = process.GraphTraversalSource;
 import Traverser = process.Traverser;
-import {GrelimQueryBuilder, GremlinConnection} from "./gremlin_connection";
+import {GremlinQueryBuilder, GremlinConnection} from "./gremlin_connection";
 
 export class RateLimitedGremlinConnection implements GremlinConnection {
   readonly g: GraphTraversal;
@@ -15,19 +15,13 @@ export class RateLimitedGremlinConnection implements GremlinConnection {
     this.g = g as unknown as GraphTraversal;
   }
 
-  iterate: (queryBuilder: GrelimQueryBuilder) => Promise<void> =
-    (queryBuilder: GrelimQueryBuilder) =>
+  iterate: (queryBuilder: GremlinQueryBuilder) => Promise<void> =
+    (queryBuilder: GremlinQueryBuilder) =>
       this.throttle.apply(() => queryBuilder(this.g).iterate());
 
-  toList(
-    queryBuilder: GrelimQueryBuilder
-  ): Promise<Traverser[]> {
-    return queryBuilder(this.g).toList();
-  }
+  toList: (queryBuilder: GremlinQueryBuilder) => Promise<Traverser[]> =
+    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.g).toList();
 
-  next(
-    queryBuilder: GrelimQueryBuilder
-  ): Promise<{ value: any; done: boolean; }> {
-    return queryBuilder(this.g).next();
-  }
+  next: (queryBuilder: GremlinQueryBuilder) => Promise<{ value: any; done: boolean; }> =
+    (queryBuilder: GremlinQueryBuilder) => queryBuilder(this.g).next();
 }

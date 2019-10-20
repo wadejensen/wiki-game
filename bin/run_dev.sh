@@ -12,7 +12,7 @@ main() {
   HOST_CONF_DIR="${APP_HOME}/conf"
   MOUNTED_CONF_DIR="/app/conf"
 
-  CONF_FILE="${MOUNTED_CONF_DIR}/wiki.local.json"
+  CONF_FILE="${MOUNTED_CONF_DIR}/wiki.dev.json"
   SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt"
 
   cd "${APP_HOME}"
@@ -22,7 +22,7 @@ main() {
   "${SCRIPTS}/run_local_redis.sh"
 
   # Pause for supporting containers to spin up
-  sleep 2
+  sleep 3
   docker run -it \
     --env CONF_FILE="${CONF_FILE}" \
     --env SEED_FILE="${SEED_FILE}" \

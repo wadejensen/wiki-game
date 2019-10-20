@@ -17,6 +17,7 @@
     "clean": true,
     "qps": 200,
     "retries": 3,
-    "batchSize": 100
+    "batchSize": 100,
+    "concurrency": 1
   }
 }

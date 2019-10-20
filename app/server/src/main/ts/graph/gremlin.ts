@@ -19,7 +19,6 @@ export async function createGraphDBConnection({
   console.log("Connecting to: " + websocketPath);
   const g = graph.traversal().withRemote(connection);
   console.log("Connection created");
-
   if (clean === true) {
     // drop any pre-existing state
     //console.warn("Dropping Graph DB data.");

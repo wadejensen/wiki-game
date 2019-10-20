@@ -1,4 +1,4 @@
-FROM node:12-alpine AS BUILD_ENV
+FROM node:10-alpine AS BUILD_ENV
 
 WORKDIR /work
 COPY . /work/

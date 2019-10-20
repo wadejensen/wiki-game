@@ -16,12 +16,13 @@ import {RateLimitedGremlinConnection} from "./graph/rate_limited_gremlin_connect
 import {GremlinConnection} from "./graph/gremlin_connection";
 import * as fs from "fs";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
+import {logger} from "../../../../common/src/main/ts/logger";
 
 const configFilePath: string = process.env["CONF_FILE"]!;
-console.log(`Reading config from: ${configFilePath}`);
+logger.info(`Reading config from: ${configFilePath}`);
 Preconditions.checkState(!!configFilePath);
 const conf: any = JSON.parse(fs.readFileSync(configFilePath, "utf-8"));
-console.log(conf);
+logger.info(conf);
 
 export function wikipediaCrawler(): Crawler {
   return new Crawler(
@@ -67,10 +68,24 @@ export async function graphClient(): Promise<GremlinConnection> {
       websocketPath: conf.gremlin.connection,
       clean: conf.gremlin.clean,
     }),
-    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3),
+    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3, true),
   );
 }
 
+//TODO(wadejensen) delete this once finished debugging
+export async function createGraphDB() {
+  return await createGraphDBConnection({
+    websocketPath: conf.gremlin.connection,
+    clean: conf.gremlin.clean,
+  })
+}
+
 export function gremlinBatchSize(): number {
+  Preconditions.checkArgument(!!conf.gremlin.batchSize, "Invalid Gremlin batch size");
   return conf.gremlin.batchSize;
+}
+
+export function gremlinConcurrency(): number {
+  Preconditions.checkArgument(!!conf.gremlin.concurrency, "Invalid Gremlin concurrency");
+  return conf.gremlin.concurrency;
 }

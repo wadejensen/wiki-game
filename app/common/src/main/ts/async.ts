@@ -1,3 +1,5 @@
+import {logger} from "./logger";
+
 export class Async {
   /**
    * Performs a computation after specified delay.
@@ -134,16 +136,8 @@ export class Async {
     errHandler: (e: any) => Promise<U>,
     initial: Promise<U>
   ): Promise<U> {
-    let i = 0;
-    return xs.reduce((accumulatorPromise: Promise<U>, x) => {
-      console.log("Before");
-      console.log(i++);
-      const ret = accumulatorPromise
-        .then(() => fn(x))
-        .catch(errHandler);
-      console.log(i);
-      console.log("After");
-      return ret;
-    }, initial);
+    return xs.reduce(async (accumulatorPromise: Promise<U>, x) =>
+      accumulatorPromise.then(() => fn(x)).catch(errHandler),
+      initial);
   }
 }

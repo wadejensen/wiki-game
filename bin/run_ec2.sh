@@ -56,7 +56,9 @@ config_file() {
     "connection": "wss://wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin",
     "clean": true,
     "qps": 200,
-    "retries": 3
+    "retries": 3,
+    "batchSize": 100,
+    "concurrency": 1
   }
 }
 EOF
@@ -100,8 +102,9 @@ main() {
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
     --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
     -p 3000:3000 \
-    wadejensen/wiki:latest \
-    > ~/server.log 2>&1
+    -p 9229:9229 \
+    wadejensen/wiki:latest #\
+    #> ~/server.log 2>&1
 }
 
 main "$@"
