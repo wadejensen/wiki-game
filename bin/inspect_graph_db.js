@@ -150,3 +150,46 @@ g
         unfold(),
         addV("num").as("100").property("i", "100")
     )
+
+
+g.V().addV("url").property("href", "big dub").next().then(console.log)
+
+
+let parentUrl = "wadejensen";
+let parentPageName = "wdj";
+let childUrl = "stevehandyman";
+let childPageName = "shm";
+
+let pp = g.
+  V().
+  has("url", "href", parentUrl).
+  fold().
+  coalesce(
+    unfold(),
+    addV("url")
+      .property("href", parentUrl)
+      .property("name", parentPageName)
+  ).next().then(val => val.value.id);
+
+let parentId = 229212;
+
+g.
+  V().
+  has("url", "href", childUrl).
+  fold().
+  coalesce(
+        unfold(),
+        addV("url").
+            property("href", childUrl).
+            property("name", childPageName)
+  ).as("child").
+    V(parentId).as("parent").
+  coalesce(
+    inE().where(outV().as("parent")),
+    addE("link").from_("parent").
+        property("in", parentPageName).
+        property("out", childPageName)
+  ).iterate().
+    then(console.log)
+
+g.V().count().toList().then(console.log)

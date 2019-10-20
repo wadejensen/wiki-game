@@ -21,6 +21,7 @@ import {sys} from "typescript";
 import GraphTraversal = p.GraphTraversal;
 import {createGraphDBConnection} from "./graph/gremlin";
 import {logger} from "../../../../common/src/main/ts/logger";
+import {Async} from "../../../../common/src/main/ts/async";
 
 
 const addV = gremlin.process.statics.addV;
@@ -124,7 +125,10 @@ async function start() {
     const concurrency: number = gremlinConcurrency();
     crawler.results.pipe(
         tap((record: CrawlerRecord) => logger.info(record.childUrls.length.toString())),
-        mergeMap((record: CrawlerRecord) => from(insertCrawlerRecord(gremlin, record)), concurrency),
+        mergeMap((record: CrawlerRecord) => from(
+          Async.exponentialBackoff(() =>
+            insertCrawlerRecord(gremlin, record), 3, 3000)
+        ), concurrency),
         catchError((err) => {
           console.error(`Failed to write to Graph DB due to ${err} ${err.stack}`);
           return of();

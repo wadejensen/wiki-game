@@ -1,6 +1,6 @@
 import {CrawlerRecord} from "./crawler";
 import {foldApply, partition} from "../../../../common/src/main/ts/fp/array";
-import {process} from "gremlin";
+import {process, structure} from "gremlin";
 import {inferPageName} from "./wiki";
 import {
   GremlinConnection,
@@ -11,6 +11,7 @@ import {gremlinBatchSize} from "./server_module";
 import {Async} from "../../../../common/src/main/ts/async";
 import {sys} from "typescript";
 import {logger} from "../../../../common/src/main/ts/logger";
+import Vertex = structure.Vertex;
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -20,6 +21,7 @@ const inV = process.statics.inV;
 const outV = process.statics.outV;
 const inE = process.statics.inE;
 const outE = process.statics.outE;
+const V = process.statics.V;
 
 const BATCH_SIZE = gremlinBatchSize();
 
@@ -30,85 +32,53 @@ export async function insertCrawlerRecord(
     graphClient: GremlinConnection,
     record: CrawlerRecord
 ): Promise<void> {
-  //await doTheNeedful(graphClient);
+  const parentVertexId = await graphClient.next((g: GraphTraversal) =>
+    insertParentVertexIfNotExists(g, record)).then(val => val.value.id);
+  console.log(parentVertexId);
 
-  // const insertQuery = (g: GraphTraversal) => buildInsertChildQuery({
-  //   g: g,
-  //   parentUrl: record.url,
-  //   parentPageName: inferPageName(record.url),
-  //   childUrl: record.childUrls[0],
-  //   childPageName: inferPageName(record.childUrls[0]),
-  // });
-  //
-  // return await graphClient.iterate(insertQuery);
+  // Create small batches of inserts because the Gremlin server doesn't like large requests
+  const batchesOfChildren: string[][] = partition(record.childUrls, BATCH_SIZE);
 
-  try {
-    // console.log(record);
-    // console.log(inferPageName(record.url));
-    // console.log(inferPageName(record.childUrls[1]));
-    // Create small batches of inserts because the Gremlin server doesn't like large requests
-    const batchesOfChildren: string[][] = partition(record.childUrls, BATCH_SIZE);
-    const insertChildrenQueries: GremlinQueryBuilder[] = batchesOfChildren.map(
-      (children: string[]) => buildInsertChildrenQuery(record, children));
+  const insertChildrenQueries: GremlinQueryBuilder[] = batchesOfChildren.map(
+    (children: string[]) => buildInsertChildrenQuery(record, parentVertexId, children));
 
-    // const insert1 = (g: GraphTraversal) => buildInsertChildQuery({
-    //   g: g,
-    //   parentUrl: record.url,
-    //   parentPageName: inferPageName(record.url),
-    //   childUrl: record.childUrls[1],
-    //   childPageName: inferPageName(record.childUrls[1]),
-    // });
-    //
-    // const insert2 = (g: GraphTraversal) => buildInsertChildQuery({
-    //   g: g,
-    //   parentUrl: record.url,
-    //   parentPageName: inferPageName(record.url),
-    //   childUrl: record.childUrls[2],
-    //   childPageName: inferPageName(record.childUrls[2]),
-    // });
-    //
-    // const insert = (g: GraphTraversal) => insert2(insert1(g));
-    //
-    //
-    // console.log(typeof insertChildrenQueries[0]);
-    // console.log(insertChildrenQueries[0]);
-    //
-    // return await graphClient.iterate(insert);
-    //
+  // insert batches of children sequentially
+  return Async.reduceSerial<GremlinQueryBuilder, void>(
+    insertChildrenQueries,
+    (t: GremlinQueryBuilder) => {
+      return Promise
+        .resolve()
+        .then(() => logger.info("Before"))
+        .then(() => graphClient.iterate(t))
+        .then(() => logger.info("After"))
+        .then(() => Promise.resolve(undefined));
+    },
+    Promise.resolve(undefined));
+}
 
-    const errHandler = (err: any) => {
-      console.error(err);
-      console.error(err.stack);
-      sys.exit();
-      return Promise.resolve(undefined);
-    };
-
-    // insert batches of children sequentially
-    return Async.reduceSerial<GremlinQueryBuilder, void>(
-      insertChildrenQueries,
-      (t: GremlinQueryBuilder) => {
-        return Promise
-          .resolve()
-          .then(() => logger.info("Before"))
-          .then(() => graphClient.iterate(t))
-          .then(() => logger.info("After"))
-          .then(() => Promise.resolve(undefined));
-      },
-      errHandler,
-      Promise.resolve(undefined));
-  } catch (err) {
-    console.error(err);
-    return undefined;
-  }
+function insertParentVertexIfNotExists(g: GraphTraversal, record: CrawlerRecord): GraphTraversal {
+  return g
+    .V()
+    .has("url", "href", record.url)
+    .fold()
+    .coalesce(
+      unfold(),
+      addV("url")
+        .property("href", record.url)
+        .property("name", inferPageName(record.url))
+    )
 }
 
 // Lazily build batch insert query
 function buildInsertChildrenQuery(
-  record: CrawlerRecord, children: string[]
+    record: CrawlerRecord,
+    parentId: number,
+    children: string[]
 ): (g: GraphTraversal) => GraphTraversal {
   return (g: GraphTraversal) =>
-    foldApply<GraphTraversal, string>(g, (g, child) => buildInsertChildQuery({
+    foldApply<GraphTraversal, string>(g, (g, child) => buildInsertChildQuery2({
         g,
+        parentId: parentId,
         parentUrl: record.url,
         parentPageName: inferPageName(record.url),
         childUrl: child,
@@ -162,6 +132,42 @@ function buildInsertChildQuery({
     );
 }
 
+function buildInsertChildQuery2({
+    g,
+    parentId,
+    parentUrl,
+    parentPageName,
+    childUrl,
+    childPageName,
+}: {
+  g: GraphTraversal,
+  parentId: number,
+  parentUrl: string,
+  parentPageName: string,
+  childUrl: string,
+  childPageName: string,
+}): GraphTraversal {
+  return g
+    .V()
+    .has("url", "href", childUrl)
+    .fold()
+    .coalesce(
+      unfold(),
+      addV("url")
+        .property("href", childUrl)
+        .property("name", childPageName)
+    )
+    .V() //
+    .has("url", "href", parentUrl).as("parent")
+    .V() //
+    .has("url", "href", childUrl).as("child")
+    .coalesce(
+      inE().where(outV().as("parent")),
+      addE("link").from_("parent")
+        .property("in", parentPageName)
+        .property("out", childPageName)
+    );
+}
 
 async function doTheNeedful(gremlin: GremlinConnection) {
   console.log("Add wadejensen");

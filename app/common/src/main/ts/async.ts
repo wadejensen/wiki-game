@@ -133,11 +133,10 @@ export class Async {
   static async reduceSerial<T, U>(
     xs: T[],
     fn: (t: T) => Promise<U>,
-    errHandler: (e: any) => Promise<U>,
     initial: Promise<U>
   ): Promise<U> {
     return xs.reduce(async (accumulatorPromise: Promise<U>, x) =>
-      accumulatorPromise.then(() => fn(x)).catch(errHandler),
+      accumulatorPromise.then(() => fn(x)),
       initial);
   }
 }
