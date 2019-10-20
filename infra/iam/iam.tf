@@ -42,28 +42,18 @@ resource "aws_iam_user_policy_attachment" "wjensen_rds_policy_attach" {
   user = aws_iam_user.wjensen.id
 }
 
-resource "aws_iam_user_policy_attachment" "wjensen_neptune_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/NeptuneFullAccess"
-  user = aws_iam_user.wjensen.id
-}
-
 resource "aws_iam_role" "wiki" {
   name = "wiki"
   assume_role_policy = data.aws_iam_policy_document.assume.json
 }
 
+resource "aws_iam_role_policy_attachment" "ec2_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+  role = aws_iam_role.wiki.id
+}
+
 resource "aws_iam_role_policy_attachment" "elasticache_policy_attach" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
-  role = aws_iam_role.wiki.id
-}
-
-resource "aws_iam_role_policy_attachment" "rds_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
-  role = aws_iam_role.wiki.id
-}
-
-resource "aws_iam_role_policy_attachment" "neptune_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/NeptuneFullAccess"
   role = aws_iam_role.wiki.id
 }
 

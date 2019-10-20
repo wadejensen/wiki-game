@@ -19,7 +19,6 @@ export function partition<T>(xs: T[], size: number): T[][] {
   const numPartitions = Math.ceil(xs.length / size);
   return range(0, numPartitions)
     .map(i => xs.slice(i * size, (i + 1) * size))
-
 }
 
 function range(start: number, finish: number) {

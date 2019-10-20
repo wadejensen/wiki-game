@@ -34,7 +34,6 @@ export async function insertCrawlerRecord(
 ): Promise<void> {
   const parentVertexId = await graphClient.next((g: GraphTraversal) =>
     insertParentVertexIfNotExists(g, record)).then(val => val.value.id);
-  console.log(parentVertexId);
 
   // Create small batches of inserts because the Gremlin server doesn't like large requests
   const batchesOfChildren: string[][] = partition(record.childUrls, BATCH_SIZE);
@@ -45,14 +44,7 @@ export async function insertCrawlerRecord(
   // insert batches of children sequentially
   return Async.reduceSerial<GremlinQueryBuilder, void>(
     insertChildrenQueries,
-    (t: GremlinQueryBuilder) => {
-      return Promise
-        .resolve()
-        .then(() => logger.info("Before"))
-        .then(() => graphClient.iterate(t))
-        .then(() => logger.info("After"))
-        .then(() => Promise.resolve(undefined));
-    },
+    (t: GremlinQueryBuilder) => graphClient.iterate(t),
     Promise.resolve(undefined));
 }
 

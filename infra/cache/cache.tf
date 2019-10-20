@@ -3,7 +3,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
   version = "2.21.1"
 }
 
@@ -14,7 +14,7 @@ variable "enabled" {
 }
 
 locals {
-  count = "${var.enabled ? 1 : 0}"
+  count = var.enabled ? 1 : 0
 }
 
 data "aws_caller_identity" "current" {}
@@ -31,13 +31,13 @@ data "terraform_remote_state" "vpc" {
 ### Redis cache
 resource "aws_elasticache_cluster" "redis" {
   count = local.count
-  cluster_id           = "wiki-redis"
-  engine               = "redis"
-  node_type            = "cache.t2.medium"
-  num_cache_nodes      = 1
+  cluster_id  = "wiki-redis"
+  engine  = "redis"
+  node_type  = "cache.t2.small"
+  num_cache_nodes = 1
   parameter_group_name = "default.redis5.0"
-  engine_version       = "5.0.3"
-  port                 = 6379
+  engine_version = "5.0.3"
+  port  = 6379
   subnet_group_name = aws_elasticache_subnet_group.redis[count.index].name
   security_group_ids = data.terraform_remote_state.vpc.outputs.security_group_public
   apply_immediately = true

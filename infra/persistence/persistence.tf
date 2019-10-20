@@ -28,33 +28,33 @@ data "terraform_remote_state" "vpc" {
   }
 }
 
-### AWS Neptune Cluster
-resource "aws_neptune_cluster" "neptune" {
+data "terraform_remote_state" "iam" {
+  backend = "local"
+  config = {
+    path = "../iam/terraform.tfstate"
+  }
+}
+
+resource "aws_instance" "graph_db" {
   count = local.count
-  cluster_identifier = "wiki-neptune"
-  engine  = "neptune"
-  skip_final_snapshot  = true
-  iam_database_authentication_enabled = false
-  apply_immediately  = true
+  # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
+  ami = "ami-0c59395006484f97a"
+  instance_type = "m5.2xlarge"
+  instance_initiated_shutdown_behavior = "terminate"
+  key_name = "adhoc"
   vpc_security_group_ids = data.terraform_remote_state.vpc.outputs.security_group_public
-  neptune_subnet_group_name = aws_neptune_subnet_group.neptune[count.index].id
-  port = 8182
+  subnet_id = data.terraform_remote_state.vpc.outputs.subnet_public[count.index]
+  iam_instance_profile = data.terraform_remote_state.iam.outputs.wiki_worker_instance_profile_id
+  user_data = file("${path.module}/../../bin/run_graph_db.sh")
+  tags = {
+    "Name" = "GraphDB"
+  }
 }
 
-resource "aws_neptune_cluster_instance" "neptune" {
-  count              = local.count
-  cluster_identifier = aws_neptune_cluster.neptune[count.index].id
-  engine             = "neptune"
-  instance_class     = "db.r4.large"
-  apply_immediately  = true
+output "graph_db_public_ip" {
+  value = length(aws_instance.graph_db.*.public_dns) == 1 ? aws_instance.graph_db.*.public_dns[0] : ""
 }
 
-resource "aws_neptune_subnet_group" "neptune" {
-  count              = local.count
-  name       = "wiki-neptune"
-  subnet_ids = data.terraform_remote_state.vpc.outputs.subnet_public
-}
-
-output "neptune_endpoint" {
-  value = length(aws_neptune_cluster.neptune) == 1 ? aws_neptune_cluster.neptune[0].endpoint : ""
+output "graph_db_private_ip" {
+  value = length(aws_instance.graph_db.*.private_dns) == 1 ? aws_instance.graph_db.*.private_dns[0] : ""
 }

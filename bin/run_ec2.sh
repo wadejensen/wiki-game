@@ -36,6 +36,17 @@ neptune_port() {
     | tr -d '"'
 }
 
+graph_db_host() {
+  aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=GraphDB" "Name=instance-state-name,Values=running" \
+    --query "Reservations[0].Instances[0].PrivateDnsName" \
+    | tr -d '"'
+}
+
+graph_db_port() {
+  echo 8182
+}
+
 config_file() {
   cat <<EOF
 {
@@ -53,11 +64,11 @@ config_file() {
     "retries": 3
   },
   "gremlin": {
-    "connection": "wss://wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin",
+    "connection": "ws://wiki-neptune.cluster-csqfv1fly5tz.ap-southeast-2.neptune.amazonaws.com:8182/gremlin",
     "clean": true,
     "qps": 200,
     "retries": 3,
-    "batchSize": 100,
+    "batchSize": 20,
     "concurrency": 1
   }
 }
@@ -69,6 +80,7 @@ seed_file() {
 }
 
 main() {
+  set -x
   # write config files
   HOST_CONF_DIR=~/conf
   HOST_CONF_FILE="${HOST_CONF_DIR}/wiki.json"
@@ -77,34 +89,39 @@ main() {
   config_file > "${HOST_CONF_FILE}"
   seed_file > "${HOST_SEED_FILE}"
 
+  cat "${HOST_CONF_FILE}"
+  cat "${HOST_SEED_FILE}"
+
   # Populate conf file with service locations for caching and persistence
   REDIS_HOST="$(redis_host)"
   REDIS_PORT="$(redis_port)"
-  NEPTUNE_HOST="$(neptune_host)"
-  NEPTUNE_PORT="$(neptune_port)"
+  GRAPHDB_HOST="$(graph_db_host)"
+  GRAPHDB_PORT="$(graph_db_port)"
+
+  GRAPHDB_CONNECTION="ws://${GRAPHDB_HOST}:${GRAPHDB_PORT}/gremlin"
+  echo GRAPHDB_CONNECTION="${GRAPHDB_CONNECTION}"
 
   # Rewrite config file to use new Redis and Neptune endpoints
   cat "${HOST_CONF_FILE}" \
-  | jq ".redis.host = \"${REDIS_HOST}\" |
-        .redis.port = \"${REDIS_PORT}\" |
-        .gremlin.connection = \"wss://${NEPTUNE_HOST}:${NEPTUNE_PORT}/gremlin\"" \
-  > tmp && \
-  mv tmp "${HOST_CONF_FILE}"
+    | jq ".redis.host = \"${REDIS_HOST}\" |
+          .redis.port = \"${REDIS_PORT}\" |
+          .gremlin.connection = \"${GRAPHDB_CONNECTION}\"" \
+    > tmpfile && \
+    mv tmpfile "${HOST_CONF_FILE}"
 
   cat "${HOST_CONF_FILE}"
   cat "${HOST_SEED_FILE}"
 
   MOUNTED_CONF_DIR="/app/conf"
   echo 'Starting docker container'
-  sudo docker pull wadejensen/wiki:latest
-  sudo docker run \
+  docker pull wadejensen/wiki:latest
+  docker run \
     --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}" \
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
     --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
     -p 3000:3000 \
-    -p 9229:9229 \
-    wadejensen/wiki:latest #\
-    #> ~/server.log 2>&1
+    wadejensen/wiki:latest \
+    > ~/server.log 2>&1
 }
 
-main "$@"
+main "$@" | tee user_data.log

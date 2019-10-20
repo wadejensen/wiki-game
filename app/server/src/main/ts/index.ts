@@ -2,7 +2,6 @@ import fs from "fs";
 import * as gremlin from "gremlin";
 import {process as p} from "gremlin";
 import {
-  createGraphDB,
   graphClient,
   gremlinConcurrency,
   redisClient,
@@ -94,16 +93,16 @@ async function start() {
   try {
     const seedUrls = getSeed();
     logger.info(`Seed urls: \n${seedUrls}`);
-    const redisConnection = redisClient("debugger");
-    await redisConnection.del("history");
-    await redisConnection.del("queue");
+    //const redisConnection = redisClient("debugger");
+    //await redisConnection.del("history");
+    //await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
 
     const vertexCountQuery = (g: GraphTraversal) => g.V().count();
     const vertexShowQuery = (g: GraphTraversal) => g.V().limit(10).valueMap();
 
     logger.info("Drop all vertices");
-    await gremlin.iterate((g: GraphTraversal) => g.V().drop());
+    //await gremlin.iterate((g: GraphTraversal) => g.V().drop());
     await gremlin.toList(vertexCountQuery).then(logger.info);
 
     logger.info("Schedule vertex count");
@@ -162,7 +161,7 @@ async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void
       return
     }
     logger.info("Dropping vertices and edges...");
-    await gremlin.iterate((g) => g.V().drop());
+    //await gremlin.iterate((g) => g.V().drop());
   } catch (err) {
     console.error(err);
     await resetGraphDb(gremlin, i + 1);

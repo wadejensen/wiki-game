@@ -10,6 +10,7 @@ IAM_INFRA_HOME="${INFRA_HOME}/iam"
 VPC_INFRA_HOME="${INFRA_HOME}/vpc"
 CACHE_INFRA_HOME="${INFRA_HOME}/cache"
 PERSISTENCE_INFRA_HOME="${INFRA_HOME}/persistence"
+SCALING_INFRA_HOME="${INFRA_HOME}/scaling"
 
 PROG=$(basename "$0")
 export AWS_PROFILE=wjensen
@@ -65,17 +66,21 @@ main() {
         plan "${VPC_INFRA_HOME}"
         plan "${CACHE_INFRA_HOME}"
         plan "${PERSISTENCE_INFRA_HOME}"
+        plan "${SCALING_INFRA_HOME}"
     elif [[ "${verb}" == "apply" ]]; then
         apply "${IAM_INFRA_HOME}"
         apply "${VPC_INFRA_HOME}"
         apply "${CACHE_INFRA_HOME}"
         apply "${PERSISTENCE_INFRA_HOME}"
+        apply "${SCALING_INFRA_HOME}"
     elif [[ "${verb}" == "deploy" ]]; then
         deploy "${IAM_INFRA_HOME}"
         deploy "${VPC_INFRA_HOME}"
         deploy "${CACHE_INFRA_HOME}"
         deploy "${PERSISTENCE_INFRA_HOME}"
+        deploy "${SCALING_INFRA_HOME}"
     elif [[ "${verb}" == "teardown" ]]; then
+        teardown "${SCALING_INFRA_HOME}"
         teardown "${PERSISTENCE_INFRA_HOME}"
         teardown "${CACHE_INFRA_HOME}"
         teardown "${VPC_INFRA_HOME}"

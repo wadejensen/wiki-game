@@ -3,7 +3,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
   version = "2.21.1"
 }
 
@@ -14,7 +14,7 @@ variable "enabled" {
 }
 
 locals {
-  count = "${var.enabled ? 1 : 0}"
+  count = var.enabled ? 1 : 0
 }
 
 data "aws_caller_identity" "current" {}
@@ -28,9 +28,16 @@ data "terraform_remote_state" "vpc" {
   }
 }
 
+data "terraform_remote_state" "iam" {
+  backend = "local"
+  config = {
+    path = "../iam/terraform.tfstate"
+  }
+}
+
 resource "aws_lb" "lb" {
   count = local.count
-  name = "scaling"
+  name = "wiki"
   internal = false
   load_balancer_type = "application"
   security_groups = data.terraform_remote_state.vpc.outputs.security_group_public
@@ -40,7 +47,7 @@ resource "aws_lb" "lb" {
 
 resource "aws_lb_target_group" "target" {
   count = local.count
-  name     = "scaling"
+  name     = "wiki"
   port     = 3000
   protocol = "HTTP"
   vpc_id   = data.terraform_remote_state.vpc.outputs.vpc_id[count.index]
@@ -60,23 +67,22 @@ resource "aws_lb_target_group" "target" {
 
 resource "aws_lb_listener" "listener" {
   count = local.count
-  load_balancer_arn = "${aws_lb.lb[count.index].arn}"
+  load_balancer_arn = aws_lb.lb[count.index].arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = "${aws_lb_target_group.target[count.index].arn}"
+    target_group_arn = aws_lb_target_group.target[count.index].arn
   }
 }
 
 resource "aws_autoscaling_group" "asg" {
   count = local.count
-  name                 = "scaling"
-  # Ubuntu 18.04
-  launch_configuration = "${aws_launch_configuration.ec2_conf.name}"
-  min_size             = 2
-  max_size             = 10
+  name                 = "wiki"
+  launch_configuration = aws_launch_configuration.ec2_conf.name
+  min_size             = 3
+  max_size             = 5
   vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.subnet_public
   target_group_arns = [aws_lb_target_group.target[count.index].arn]
 
@@ -91,7 +97,7 @@ resource "aws_autoscaling_group" "asg" {
 
 resource "aws_autoscaling_policy" "scaling_policy" {
   count = local.count
-  name = "scaling"
+  name = "wiki"
   autoscaling_group_name = aws_autoscaling_group.asg[count.index].name
   policy_type = "TargetTrackingScaling"
   estimated_instance_warmup = 30
@@ -101,45 +107,19 @@ resource "aws_autoscaling_policy" "scaling_policy" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
     target_value = 50.0
-//    scale_in_cooldown = 120
-//    scale_out_cooldown = 60
   }
-}
-
-resource "aws_iam_role" "scaling" {
-  name = "scaling"
-  assume_role_policy = data.aws_iam_policy_document.assume.json
-}
-
-data "aws_iam_policy_document" "assume" {
-  statement {
-    effect = "Allow"
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.amazonaws.com"
-      ]
-    }
-    actions = [
-      "sts:AssumeRole"
-    ]
-  }
-}
-
-resource "aws_iam_instance_profile" "scaling" {
-  name = "scaling"
-  role = "${aws_iam_role.scaling.name}"
 }
 
 resource "aws_launch_configuration" "ec2_conf" {
-  name_prefix   = "scaling-conf-"
-  image_id      = "ami-0b76c3b150c6b1423"
+  name_prefix = "wiki-conf-"
+  # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
+  image_id = "ami-0c59395006484f97a"
   instance_type = "t2.micro"
   key_name = "adhoc"
   user_data = file("${path.module}/../../bin/run_ec2.sh")
 
-  iam_instance_profile = aws_iam_instance_profile.scaling.name
-  security_groups = data.terraform_remote_state.vpc.outputs.security_group_private
+  iam_instance_profile = data.terraform_remote_state.iam.outputs.wiki_worker_instance_profile_id
+  security_groups = data.terraform_remote_state.vpc.outputs.security_group_public
 
   lifecycle {
     create_before_destroy = true
