@@ -155,15 +155,29 @@ async function start() {
     const cloudwatchClient = new AWS.CloudWatch({ region: 'ap-southeast-2' });
     const autoscalingClient = new AWS.AutoScaling({ region: 'ap-southeast-2' })
 
-    setInterval(async () =>
-        console.info(await scalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME)),
-      3000
+    setInterval(async () => {
+        const stats = await scalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
+        console.info(stats);
+        const params = {
+          MetricData: [
+            {
+              MetricName: 'CRAWLER_QUEUE_DEPTH',
+              Unit: 'None',
+              Value: stats.queueDepth,
+            },
+          ],
+          Namespace: 'WIKI'
+        };
+        return await cloudwatchClient
+          .putMetricData(params)
+          .promise()
+    },
+      10000
     );
     setInterval(async () =>
         console.info(await graphStats(gremlin, "https://en.wikipedia.org/wiki/Main_Page")),
       10000
     );
-
   } catch (err) {
     console.error(`Unexpected error encountered: ${err}`);
   }
@@ -227,11 +241,8 @@ async function scalingStats(
     asgName: string,
 ): Promise<ScalingStats> {
   const numCrawledPages = await crawler.historySize();
-  console.log(`Num crawled pages: ${numCrawledPages}`);
   const numQueuedPages = await crawler.queueDepth();
-  console.log(`Num queued pages: ${numQueuedPages}`);
   const instanceCount = await getAutoscalingGroupSize(autoscalingClient, asgName);
-  console.log(`Num instances: ${instanceCount}`);
   return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
 }
 
@@ -268,8 +279,6 @@ async function publishCrawlerMetrics(
     autoscalingClient: AutoScaling,
     crawler: Crawler
 ): Promise<void> {
-
-
   await cloudwatchClient.putMetricData().promise();
   var params = {
     MetricData: [
@@ -298,8 +307,6 @@ async function getAutoscalingGroupSize(autoscalingClient: AutoScaling, asgName: 
   const asgs = resp
     .AutoScalingGroups
     .filter((asg: AutoScalingGroup) => asg.AutoScalingGroupName == asgName);
-
-  logger.info(asgs);
 
   return asgs.length != 0
     ? asgs.Instances!.filter((inst: Instance) => inst.LifecycleState == "InService")!.length
