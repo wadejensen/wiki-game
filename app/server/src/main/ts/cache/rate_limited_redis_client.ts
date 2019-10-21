@@ -19,6 +19,10 @@ export class RateLimitedRedisClient implements RedisClient {
     return this.throttle.apply(() => this.redisClient.sadd(key, value));
   }
 
+  scard(key: string): Promise<number> {
+    return this.throttle.apply(() => this.redisClient.scard(key));
+  }
+
   sismember(key: string, value: string): Promise<number> {
     return this.throttle.apply(() => this.redisClient.sismember(key, value));
   }
@@ -27,11 +31,11 @@ export class RateLimitedRedisClient implements RedisClient {
     return this.throttle.apply(() => this.redisClient.zadd(key, entries));
   }
 
-  zpopmin(key: string, n: number): Promise<[string, number][]> {
-    return this.throttle.apply(() => this.redisClient.zpopmin(key, n));
+  zcard(key: string): Promise<number> {
+    return this.throttle.apply(() => this.redisClient.zcard(key));
   }
 
-  zcount(key: string): Promise<number> {
-    return this.throttle.apply(() => this.redisClient.zcount(key));
+  zpopmin(key: string, n: number): Promise<[string, number][]> {
+    return this.throttle.apply(() => this.redisClient.zpopmin(key, n));
   }
 }

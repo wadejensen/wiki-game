@@ -15,4 +15,8 @@ export class RedisSet implements RemoteSet {
       .sismember(this.key, value)
       .then((ret) => ret == 1);
   }
+
+  size(): Promise<number> {
+    return this.redisClient.scard(this.key)
+  }
 }

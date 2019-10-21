@@ -40,6 +40,14 @@ export class Crawler {
     this.source.next(new CrawlerTask(url.href, 0));
   }
 
+  historySize(): Promise<number> {
+    return this.crawlHistory.size()
+  }
+
+  queueDepth(): Promise<number> {
+    return this.queue.size();
+  }
+
   async start() {
     Preconditions.checkState(!this.isStarted, "Crawler has already been started");
     this.isStarted = true;

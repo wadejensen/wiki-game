@@ -27,12 +27,20 @@ export class AsyncRedisClient {
     return this.client.saddAsync(key, value);
   }
 
+  scard(key: string): Promise<number> {
+    return this.client.scardAsync(key).then((x: string) => parseInt(x));
+  }
+
   sismember(key: string, value: string): Promise<number> {
     return this.client.sismemberAsync(key, value)
   }
 
   zadd(key: string, values: [number, string][]): Promise<number> {
     return this.client.zaddAsync(key, flatMap((x) => x, values));
+  }
+
+  zcard(key: string): Promise<number> {
+    return this.client.zcardAsync(key).then((x: string) => parseInt(x));
   }
 
   zpopmin(key: string, n: number): Promise<[string, number][]> {
@@ -42,9 +50,5 @@ export class AsyncRedisClient {
         batch.map((pair: [string, string]) =>
           [pair[0], Number.parseInt(pair[1])])
       );
-  }
-
-  zcount(key: string): Promise<number> {
-    return this.client.zcountAsync(key, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
   }
 }

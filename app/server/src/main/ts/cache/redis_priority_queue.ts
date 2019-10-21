@@ -15,6 +15,6 @@ export class RedisPriorityQueue implements PriorityQueue {
   }
 
   size(): Promise<number> {
-    return this.redisClient.zcount(this.key);
+    return this.redisClient.zcard(this.key);
   }
 }

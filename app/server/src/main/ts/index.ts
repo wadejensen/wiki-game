@@ -1,4 +1,5 @@
 import fs from "fs";
+import * as AWS from 'aws-sdk';
 import * as gremlin from "gremlin";
 import {process as p} from "gremlin";
 import {
@@ -7,20 +8,22 @@ import {
   redisClient,
   wikipediaCrawler
 } from "./server_module";
-import {CrawlerRecord} from "./crawler";
+import {Crawler, CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph";
 // RxJS v6+
 import {from, of} from "rxjs";
 import {catchError, concatMap, mergeMap, tap} from "rxjs/operators";
 import {Server} from "./server";
 import {URL} from "url";
-import {GremlinConnection} from "./graph/gremlin_connection";
+import {GremlinConnection, GremlinQueryBuilder} from "./graph/gremlin_connection";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {sys} from "typescript";
 import GraphTraversal = p.GraphTraversal;
 import {createGraphDBConnection} from "./graph/gremlin";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
+import CloudWatch = require("aws-sdk/clients/cloudwatch");
+import {AutoScaling} from "aws-sdk";
 
 
 const addV = gremlin.process.statics.addV;
@@ -31,8 +34,16 @@ const inV = gremlin.process.statics.inV;
 const outV = gremlin.process.statics.outV;
 const inE = gremlin.process.statics.inE;
 const outE = gremlin.process.statics.outE;
+const out = gremlin.process.statics.out;
+const values = gremlin.process.statics.values;
+const value = gremlin.process.statics.value;
+const loops = gremlin.process.statics.loops;
+const has = gremlin.process.statics.has;
+const eq = gremlin.process.P.eq;
+const gte = gremlin.process.P.gte;
+const select = gremlin.process.statics.select;
 
-
+const ASG_NAME = "wiki";
 
 new Server().start();
 try {
@@ -138,6 +149,20 @@ async function start() {
       .subscribe(() => logger.info("Flushed"));
 
     seedUrls.forEach(url => crawler.addSeed(new URL(url)));
+
+    // publish metrics
+    const cloudwatchClient = new AWS.CloudWatch({ region: 'ap-southeast-2' });
+    const autoscalingClient = new AWS.AutoScaling({ region: 'ap-southeast-2' })
+
+    setInterval(async () =>
+        console.info(await scalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME)),
+      3000
+    );
+    setInterval(async () =>
+        console.info(await graphStats(gremlin, "https://en.wikipedia.org/wiki/Main_Page")),
+      10000
+    );
+
   } catch (err) {
     console.error(`Unexpected error encountered: ${err}`);
   }
@@ -167,4 +192,112 @@ async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void
     console.error(err);
     await resetGraphDb(gremlin, i + 1);
   }
+}
+
+class ScalingStats {
+  constructor(
+    readonly numPagesCrawled: number,
+    readonly queueDepth: number,
+    readonly instanceCount: number,
+  ) {}
+
+  toString() {
+    return JSON.stringify(this, null, 2);
+  }
+}
+
+class GraphStats {
+  constructor(
+    readonly firstDegreeVertices: number,
+    readonly secondDegreeVertices: number,
+    readonly thirdDegreeVertices: number,
+    readonly forthDegreeVertices: number,
+  ) {}
+
+  toString() {
+    return JSON.stringify(this, null, 2);
+  }
+}
+
+async function scalingStats(
+    cloudwatchClient: CloudWatch,
+    autoscalingClient: AutoScaling,
+    crawler: Crawler,
+    asgName: string,
+): Promise<ScalingStats> {
+  const numCrawledPages = await crawler.historySize();
+  const numQueuedPages = await crawler.queueDepth();
+  const instanceCount = await getAutoscalingGroupSize(autoscalingClient, asgName);
+  return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
+}
+
+async function graphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
+  return new GraphStats(
+    await numVerticesQuery(gremlinClient, seedUrl, 1),
+    await numVerticesQuery(gremlinClient, seedUrl, 2),
+    await numVerticesQuery(gremlinClient, seedUrl, 3),
+    await numVerticesQuery(gremlinClient, seedUrl, 4),
+  );
+}
+
+function numVerticesQuery(
+    gremlinConnection: GremlinConnection,
+    url: string,
+    degreesOfSeparation: number,
+): Promise<number> {
+  const query = (g: GraphTraversal) => g.
+    V().
+    has("url", "href", url).
+    repeat(outE().where(has("degree", loops())).inV()).
+    times(degreesOfSeparation).
+    simplePath().
+    count();
+
+  return gremlinConnection
+    .next(query)
+    .then(res => res.value as number)
+}
+
+//aws describe-auto-scaling-groups --auto-scaling-group-names wiki
+async function publishCrawlerMetrics(
+    cloudwatchClient: CloudWatch,
+    autoscalingClient: AutoScaling,
+    crawler: Crawler
+): Promise<void> {
+
+
+  await cloudwatchClient.putMetricData().promise();
+  var params = {
+    MetricData: [
+      {
+        MetricName: 'PAGES_VISITED',
+        Dimensions: [
+          {
+            Name: 'UNIQUE_PAGES',
+            Value: 'URLS'
+          },
+        ],
+        Unit: 'None',
+        Value: 1.0
+      },
+    ],
+    Namespace: 'SITE/TRAFFIC'
+  };
+}
+
+// g.
+// V().
+// has("url", "href", "https://en.wikipedia.org/wiki/Main_Page").
+// outE().where(value("degree").is(eq(loops())))
+
+async function getAutoscalingGroupSize(autoscalingClient: AutoScaling, asgName: string): Promise<number> {
+  const resp = await autoscalingClient
+    .describeAutoScalingGroups({ AutoScalingGroupNames: [ASG_NAME] })!
+    .promise();
+  return resp!
+    .AutoScalingGroups!
+    .filter(asg => asg.AutoScalingGroupName == asgName)[0]!
+    .Instances!
+    .filter(inst => inst.LifecycleState == "InService")!
+    .length
 }

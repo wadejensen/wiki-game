@@ -58,7 +58,7 @@ function insertParentVertexIfNotExists(g: GraphTraversal, record: CrawlerRecord)
       addV("url")
         .property("href", record.url)
         .property("name", inferPageName(record.url))
-    )
+        .property("degree", record.degree))
 }
 
 // Lazily build batch insert query
@@ -74,7 +74,8 @@ function buildInsertChildrenQuery(
         parentUrl: record.url,
         parentPageName: inferPageName(record.url),
         childUrl: child,
-        childPageName: inferPageName(child)
+        childPageName: inferPageName(child),
+        childDegree: record.degree + 1,
       }),
       children,
     );
@@ -119,8 +120,8 @@ function buildInsertChildQuery({
     .coalesce(
       inE().where(outV().as("parent")),
       addE("link").from_("parent")
-        .property("in", parentPageName)
-        .property("out", childPageName)
+        .property("in", childPageName)
+        .property("out", parentPageName)
     );
 }
 
@@ -131,6 +132,7 @@ function buildInsertChildQuery2({
     parentPageName,
     childUrl,
     childPageName,
+    childDegree,
 }: {
   g: GraphTraversal,
   parentId: number,
@@ -138,6 +140,7 @@ function buildInsertChildQuery2({
   parentPageName: string,
   childUrl: string,
   childPageName: string,
+  childDegree: number,
 }): GraphTraversal {
   return g
     .V()
@@ -148,6 +151,7 @@ function buildInsertChildQuery2({
       addV("url")
         .property("href", childUrl)
         .property("name", childPageName)
+        .property("degree", childDegree)
     )
     .V() //
     .has("url", "href", parentUrl).as("parent")
@@ -156,8 +160,9 @@ function buildInsertChildQuery2({
     .coalesce(
       inE().where(outV().as("parent")),
       addE("link").from_("parent")
-        .property("in", parentPageName)
-        .property("out", childPageName)
+        .property("out", parentPageName)
+        .property("in", childPageName)
+        .property("degree", childDegree)
     );
 }
 
