@@ -24,6 +24,7 @@ import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
 import CloudWatch = require("aws-sdk/clients/cloudwatch");
 import {AutoScaling} from "aws-sdk";
+import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
 
 
 const addV = gremlin.process.statics.addV;
@@ -226,8 +227,11 @@ async function scalingStats(
     asgName: string,
 ): Promise<ScalingStats> {
   const numCrawledPages = await crawler.historySize();
+  console.log(`Num crawled pages: ${numCrawledPages}`);
   const numQueuedPages = await crawler.queueDepth();
+  console.log(`Num queued pages: ${numQueuedPages}`);
   const instanceCount = await getAutoscalingGroupSize(autoscalingClient, asgName);
+  console.log(`Num instances: ${instanceCount}`);
   return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
 }
 
@@ -285,19 +289,19 @@ async function publishCrawlerMetrics(
   };
 }
 
-// g.
-// V().
-// has("url", "href", "https://en.wikipedia.org/wiki/Main_Page").
-// outE().where(value("degree").is(eq(loops())))
-
 async function getAutoscalingGroupSize(autoscalingClient: AutoScaling, asgName: string): Promise<number> {
   const resp = await autoscalingClient
     .describeAutoScalingGroups({ AutoScalingGroupNames: [ASG_NAME] })!
-    .promise();
-  return resp!
-    .AutoScalingGroups!
-    .filter(asg => asg.AutoScalingGroupName == asgName)[0]!
-    .Instances!
-    .filter(inst => inst.LifecycleState == "InService")!
-    .length
+    .promise()
+    .catch((err) => logger.error(err));
+
+  const asgs = resp
+    .AutoScalingGroups
+    .filter((asg: AutoScalingGroup) => asg.AutoScalingGroupName == asgName);
+
+  logger.info(asgs);
+
+  return asgs.length != 0
+    ? asgs.Instances!.filter((inst: Instance) => inst.LifecycleState == "InService")!.length
+    : 0;
 }

@@ -8,6 +8,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 APP_HOME="${REPO_ROOT}/app"
 SCRIPTS="${REPO_ROOT}/bin"
 
+export AWS_PROFILE=wjensen
+
 main() {
   local webpack_mode="dev"
 
