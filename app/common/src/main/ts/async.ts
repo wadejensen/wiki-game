@@ -9,6 +9,15 @@ export class Async {
       setTimeout(() => resolve(fn()), delayMs)
     )
   }
+
+  /**
+   * Performs a computation after specified delay.
+   */
+  static delayP<T>(fn: () => T, delayMs: number): Promise<T> {
+    return new Promise((resolve, reject) =>
+      setTimeout(() => resolve(Promise.resolve(fn())), delayMs)
+    )
+  }
   /**
    * Performs a computation with a specified max runtime, after which a
    * fallback result will be used.
