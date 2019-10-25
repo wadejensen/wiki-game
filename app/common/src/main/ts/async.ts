@@ -119,6 +119,7 @@ export class Async {
     delayMs: number,
     retryCount: number
   ): Promise<T> {
+    console.log("Performing exp operation");
     return fn().catch((reason) => {
       if (retryCount == maxRetries) {
         return Promise.reject(
@@ -126,6 +127,7 @@ export class Async {
         )
       }
       else {
+        console.log("Backing off...");
         return Async.delay(
           () => this.doExponentialBackoff(
             fn,

@@ -1,6 +1,6 @@
 {
   "crawler": {
-    "qps": 0.1,
+    "qps": 4,
     "timeout": 3000,
     "retries": 3,
     "backoffDelayMs": 300,
@@ -18,6 +18,6 @@
     "qps": 80,
     "retries": 3,
     "batchSize": 20,
-    "concurrency": 1
+    "concurrency": 4
   }
 }

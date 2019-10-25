@@ -268,7 +268,7 @@ function numVerticesQuery(
   const query = (g: GraphTraversal) => g.
     V().
     has("url", "href", url).
-    repeat(outE().where(has("degree", loops())).inV()).
+    repeat(outE().where(has("degree", loops())).inV().dedup()).
     times(degreesOfSeparation).
     simplePath().
     count();
