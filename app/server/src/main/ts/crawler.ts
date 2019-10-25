@@ -1,18 +1,20 @@
-import {catchError, mergeMap, mergeMapTo, share, tap} from "rxjs/operators";
+import {catchError, mergeMap, share, tap} from "rxjs/operators";
 import {from, Observable, of, Subject, timer} from "rxjs";
 import {HTTPClient} from "./http/http_client";
 import * as Cheerio from "cheerio";
 import {URL} from "url";
 import {flatMap} from "./util";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
-import {RemoteSet} from "./cache/remote_set";
-import {PriorityQueue} from "./cache/priority_queue";
 import {filterByPromise} from "filter-async-rxjs-pipe/dist/src";
+import {Flag} from "./flag";
+import {PriorityQueue} from "./priority_queue";
+import {RemoteSet} from "./remote_set";
 
 export class Crawler {
   private readonly httpClient: HTTPClient;
   private readonly crawlHistory: RemoteSet;
   private readonly queue: PriorityQueue;
+  private readonly flag: Flag;
   private readonly isValidUrl: (url: string) => boolean;
   private readonly qps: number;
 
@@ -25,12 +27,14 @@ export class Crawler {
     httpClient: HTTPClient,
     crawlerHistory: RemoteSet,
     queue: PriorityQueue,
+    flag: Flag,
     isValidUrl: (url: string) => boolean,
     qps: number,
   ) {
     this.httpClient = httpClient;
     this.crawlHistory = crawlerHistory;
     this.queue = queue;
+    this.flag = flag;
     this.isValidUrl = isValidUrl;
     this.qps = qps;
   }
@@ -79,7 +83,8 @@ export class Crawler {
 
     // feedback priority queue results into crawler pipeline
     timer(1000, 1000).pipe(
-      mergeMap(() => from(this.queue.popMin(Math.ceil(this.qps)))),
+      mergeMap(() => from(this.flag.enabled())),
+      mergeMap((enabled: boolean) => from(this.popUrls(enabled))),
       mergeMap((batch: [string, number][]) => from(batch)),
     ).subscribe((entry: [string, number]) =>
       this.source.next(new CrawlerTask(entry[0], entry[1]))
@@ -88,7 +93,16 @@ export class Crawler {
     return this;
   }
 
-  async crawl(task: CrawlerTask): Promise<CrawlerRecord> {
+  private popUrls(enabled: boolean): Promise<[string, number][]> {
+    if (enabled) {
+      return this.queue.popMin(Math.ceil(this.qps));
+    } else {
+      return Promise.resolve(new Array<[string, number]>())
+    }
+  }
+
+  private async crawl(task: CrawlerTask): Promise<CrawlerRecord> {
+    console.log(task);
     const html = await this.httpClient
       .get(task.url)
       .then(resp => resp.text());

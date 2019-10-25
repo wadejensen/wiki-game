@@ -1,5 +1,5 @@
-import {RemoteSet} from "./remote_set";
 import {RedisClient} from "./redis_client";
+import {RemoteSet} from "../remote_set";
 
 export class RedisSet implements RemoteSet {
   constructor(readonly redisClient: RedisClient, readonly key: string) {}
@@ -8,6 +8,12 @@ export class RedisSet implements RemoteSet {
     return this.redisClient
       .sadd(this.key, value)
       .then((count) => undefined);
+  }
+
+  del(): Promise<void> {
+    return this.redisClient
+      .del(this.key)
+      .then(() => undefined);
   }
 
   contains(value: string): Promise<boolean> {

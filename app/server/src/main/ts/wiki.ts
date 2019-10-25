@@ -10,6 +10,7 @@ const PAGE_NAME_PREFIX_BLACKLIST = new Set([
   "Template",
   "Template_talk",
   "Wikipedia",
+  "Wikipedia_talk",
 ]);
 
 // const PAGE_WHITELIST = [

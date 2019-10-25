@@ -1,5 +1,5 @@
-import {PriorityQueue} from "./priority_queue";
 import {RedisClient} from "./redis_client";
+import {PriorityQueue} from "../priority_queue";
 
 export class RedisPriorityQueue implements PriorityQueue {
   constructor(readonly redisClient: RedisClient, readonly key: string) {}
@@ -8,6 +8,12 @@ export class RedisPriorityQueue implements PriorityQueue {
     return this.redisClient
       .zadd(this.key, entries)
       .then((count) => undefined);
+  }
+
+  del(): Promise<void> {
+    return this.redisClient
+      .del(this.key)
+      .then(() => undefined);
   }
 
   popMin(n: number): Promise<[string, number][]> {

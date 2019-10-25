@@ -2,13 +2,19 @@ import fs from "fs";
 import * as AWS from 'aws-sdk';
 import * as gremlin from "gremlin";
 import {process as p} from "gremlin";
-import {graphClient, gremlinConcurrency, wikipediaCrawler} from "./server_module";
+import {
+  crawlerFlag,
+  graphClient,
+  gremlinConcurrency,
+  redisClient,
+  wikipediaCrawler
+} from "./server_module";
 import {Crawler, CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph";
 // RxJS v6+
 import {from, of} from "rxjs";
 import {catchError, mergeMap, tap} from "rxjs/operators";
-import {Server} from "./server";
+import {resetGraphDb, Server} from "./server";
 import {URL} from "url";
 import {GremlinConnection} from "./graph/gremlin_connection";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
@@ -17,6 +23,7 @@ import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
 import GraphTraversal = p.GraphTraversal;
 import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
+import {Flag} from "./flag";
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -130,12 +137,13 @@ async function start() {
 
     // flush crawler results to Graph DB
     const concurrency: number = gremlinConcurrency();
+    const flag = crawlerFlag();
     crawler.results.pipe(
         tap((record: CrawlerRecord) => logger.info(record.childUrls.length.toString())),
-        mergeMap((record: CrawlerRecord) => from(
-          Async.exponentialBackoff(() =>
-            insertCrawlerRecord(gremlin, record), 3, 3000)
-        ), concurrency),
+        mergeMap((record: CrawlerRecord) =>
+          from(writeToGraphDb(gremlin, flag, record)),
+          concurrency
+        ),
         catchError((err) => {
           console.error(`Failed to write to Graph DB due to ${err} ${err.stack}`);
           return of();
@@ -162,6 +170,20 @@ async function start() {
   }
 }
 
+async function writeToGraphDb(
+  gremlinClient: GremlinConnection,
+  flag: Flag,
+  record: CrawlerRecord
+): Promise<void> {
+  if (await flag.enabled()) {
+    console.log("Submitting work............");
+    return Async.exponentialBackoff(() =>
+      insertCrawlerRecord(gremlinClient, record), 3, 3000)
+  } else {
+    return Promise.resolve();
+  }
+}
+
 function getSeed(): string[] {
   const seedFilePath = process.env["SEED_FILE"]!;
   logger.info(seedFilePath);
@@ -171,21 +193,6 @@ function getSeed(): string[] {
     .split("\n")
     .filter(line => line.length !== 0)
     .map(line => line.trim());
-}
-
-async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void> {
-  try {
-    if (i > 10) {
-      console.error("Failed to clear graph db state");
-      sys.exit(1);
-      return
-    }
-    logger.info("Dropping vertices and edges...");
-    //await gremlin.iterate((g) => g.V().drop());
-  } catch (err) {
-    console.error(err);
-    await resetGraphDb(gremlin, i + 1);
-  }
 }
 
 export class ApplicationStats {

@@ -3,9 +3,7 @@ import {isValidWikiPage} from "./wiki";
 import {FetchHTTPClient} from "./http/fetch_http_client";
 import {RateLimitedHTTPClient} from "./http/rate_limited_http_client";
 import {HTTPClient} from "./http/http_client";
-import {RemoteSet} from "./cache/remote_set";
 import {RedisPriorityQueue} from "./cache/redis_priority_queue";
-import {PriorityQueue} from "./cache/priority_queue";
 import {RedisSet} from "./cache/redis_set";
 import {RateLimitedRedisClient} from "./cache/rate_limited_redis_client";
 import {RedisClient} from "./cache/redis_client";
@@ -18,6 +16,11 @@ import * as fs from "fs";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {range} from "../../../../common/src/main/ts/fp/array";
+import {Server} from "./server";
+import {Flag} from "./flag";
+import {RedisFlag} from "./cache/redis_flag";
+import {RemoteSet} from "./remote_set";
+import {PriorityQueue} from "./priority_queue";
 
 const configFilePath: string = process.env["CONF_FILE"]!;
 logger.info(`Reading config from: ${configFilePath}`);
@@ -30,6 +33,7 @@ export function wikipediaCrawler(): Crawler {
     httpClient(),
     crawlerHistory(),
     crawlerPriorityQueue(),
+    crawlerFlag(),
     isValidWikiPage,
     conf.crawler.qps,
   )
@@ -55,6 +59,10 @@ function crawlerPriorityQueue(): PriorityQueue {
   return new RedisPriorityQueue(redisClient("redisQueue"), "queue");
 }
 
+export function crawlerFlag(): Flag {
+  return new RedisFlag(redisClient("flag"), "enableCrawler");
+}
+
 export function redisClient(name: string): RedisClient {
   return new RateLimitedRedisClient(
     AsyncRedisClient.create({ host: conf.redis.host, port: conf.redis.port }),
@@ -71,7 +79,7 @@ export async function graphClient(): Promise<GremlinConnection> {
 
   return new RateLimitedGremlinConnectionPool(
     connections,
-    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3, true),
+    new LossyThrottle("gremlinClient", conf.gremlin.qps, 3),
   );
 }
 

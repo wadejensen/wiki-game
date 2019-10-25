@@ -15,12 +15,20 @@ export class RateLimitedRedisClient implements RedisClient {
     return this.throttle.apply(() => this.redisClient.del(key));
   }
 
+  get(key: string): Promise<string> {
+    return this.throttle.apply(() => this.redisClient.get(key));
+  }
+
   sadd(key: string, value: string): Promise<number> {
     return this.throttle.apply(() => this.redisClient.sadd(key, value));
   }
 
   scard(key: string): Promise<number> {
     return this.throttle.apply(() => this.redisClient.scard(key));
+  }
+
+  set(key: string, value: string): Promise<string> {
+    return this.throttle.apply(() => this.redisClient.set(key, value));
   }
 
   sismember(key: string, value: string): Promise<number> {

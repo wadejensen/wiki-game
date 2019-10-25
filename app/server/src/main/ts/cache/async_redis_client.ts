@@ -23,12 +23,20 @@ export class AsyncRedisClient {
     return this.client.delAsync(key);
   }
 
+  get(key: string): Promise<string> {
+    return this.client.getAsync(key);
+  }
+
   sadd(key: string, value: string): Promise<number> {
     return this.client.saddAsync(key, value);
   }
 
   scard(key: string): Promise<number> {
     return this.client.scardAsync(key).then((x: string) => parseInt(x));
+  }
+
+  set(key: string, value: string): Promise<string> {
+    return this.client.setAsync(key, value);
   }
 
   sismember(key: string, value: string): Promise<number> {
