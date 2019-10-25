@@ -1,30 +1,9 @@
 import {graphmodel} from "../../../../common/src/main/ts/graph";
 import {ApplicationStats} from "../../../../server/src/main/ts";
 
+
 export async function getGraph(): Promise<graphmodel.Graph> {
-  return fetch(window.location + "graph", {
-    method: "GET",
-    headers: {
-      "Content-Type": "Accept: application/json",
-    },
-  }).then(handleFailure)
-    .then(resp => resp.json())
-    .catch(err => console.error(err));
-}
-
-export async function getGraphLive(): Promise<graphmodel.Graph> {
-  return fetch(window.location + "graph-live", {
-    method: "GET",
-    headers: {
-      "Content-Type": "Accept: application/json",
-    },
-  }).then(handleFailure)
-    .then(resp => resp.json())
-    .catch(err => console.error(err));
-}
-
-export async function getGraphLive2(): Promise<graphmodel.Graph> {
-  return fetch(window.location + "graph-live2", {
+  return fetch(`${window.location}graph`, {
     method: "GET",
     headers: {
       "Content-Type": "Accept: application/json",

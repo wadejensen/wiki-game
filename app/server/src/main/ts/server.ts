@@ -8,10 +8,15 @@ import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
 import {graphClient} from "./server_module";
 const bodyParser = require("body-parser");
-import {GremlinConnection} from "./graph/gremlin_connection";
+import {GremlinConnection, GremlinQueryBuilder} from "./graph/gremlin_connection";
 import {GraphStats, getGraphStats, getScalingStats, ScalingStats, ApplicationStats} from "./index";
 import {AutoScaling, CloudWatch} from "aws-sdk";
 import {Crawler} from "./crawler";
+
+import {x86} from "murmurhash3js"
+import GraphTraversal = process.GraphTraversal;
+import {logger} from "../../../../common/src/main/ts/logger";
+import {Async} from "../../../../common/src/main/ts/async";
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -68,61 +73,24 @@ export class Server {
       res.send(new Date().getTime());
     });
 
-    app.get('/graph', (req: Request, res: Response) => {
-      const graph = {
-        nodes: [
-          { id: "n0", label: "A node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
-          { id: "n1", label: "Another node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
-          { id: "n2", label: "And a last one", x: Math.random(), y: Math.random(), size: 1, color: '#E57821' }
-        ],
-        edges: [
-          { id: "e0", source: "n0", target: "n1", color: '#282c34', type:'line', size:0.5 },
-          { id: "e1", source: "n1", target: "n2", color: '#282c34', type:'curve', size:1},
-        ]
-      };
-      res.send(graph);
-    });
+    // app.get('/graph', (req: Request, res: Response) => {
+    //   const graph = {
+    //     nodes: [
+    //       { id: "n0", label: "A node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
+    //       { id: "n1", label: "Another node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
+    //       { id: "n2", label: "And a last one", x: Math.random(), y: Math.random(), size: 1, color: '#E57821' }
+    //     ],
+    //     edges: [
+    //       { id: "e0", source: "n0", target: "n1", color: '#282c34', type:'line', size:0.5 },
+    //       { id: "e1", source: "n1", target: "n2", color: '#282c34', type:'curve', size:1},
+    //     ]
+    //   };
+    //   res.send(graph);
+    // });
 
-    app.get('/graph-live', async (req: Request, res: Response) => {
-      const g = await graphClient();
-      const sg: graphson.GraphSON = await g.next((g) => g
-        .V()
-        .has("num", "i", "1")
-        .repeat(outE().subgraph('subGraph').inV()).times(10).cap('subGraph')
-      ).then(r => r.value);
-      console.log(sg);
-
-      const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
-        return {
-          id: vert["@value"].id["@value"].toString(),
-          label: vert["@value"].properties["i"][0]["@value"].value,
-          x: Math.random(),
-          y: Math.random(),
-          color: "#000",
-          size: 5,
-        }
-      });
-
-      const edges: graphmodel.Edge[] = sg.edges.map((e: graphson.Edge) => {
-        return {
-          id: e["@value"].id["@value"].toString(),
-          label: e["@value"].label,
-          source: e["@value"].outV["@value"].toString(),
-          target: e["@value"].inV["@value"].toString(),
-          color: "#000",
-          size: 5,
-          type: "line",
-        }
-      });
-
-      const data: graphmodel.Graph = { nodes, edges };
-      res.send(data);
-    });
-
-    app.get('/graph-live2', async (req: Request, res: Response) => {
+    app.get('/graph', async (req: Request, res: Response) => {
       console.log("Start gremlin request");
-      const g = await graphClient();
-      const sg: graphson.GraphSON = await g.next((g) => g.
+      const sg: graphson.GraphSON = await this.gremlinClient.next((g) => g.
         V().
         has("name", "Main_Page").
         repeat(
@@ -144,15 +112,17 @@ export class Server {
         cap("subgraph")
       ).then(r => r.value);
 
-      console.log(sg);
+      //console.log(sg);
       console.log("Stop gremlin request");
 
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
+        const id = vert["@value"].id["@value"].toString();
+        const label = vert["@value"].properties["name"][0]["@value"].value;
         return {
-          id: vert["@value"].id["@value"].toString(),
-          label: vert["@value"].properties["name"][0]["@value"].value,
-          x: Math.random(),
-          y: Math.random(),
+          id: id,
+          label: label,
+          x: numericHash(label),
+          y: numericHash(reverse(label)),
           color: "#000",
           size: 5,
         }
@@ -171,7 +141,7 @@ export class Server {
       });
 
       const data: graphmodel.Graph = { nodes, edges };
-      console.log(data);
+      //console.log(data);
       res.send(data);
     });
 
@@ -200,3 +170,32 @@ export class Server {
     app.listen(3000, () => console.log("Listening on port 3000"));
   }
 }
+
+export async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void> {
+  try {
+    if (i > 10) {
+      const errMsg = "Failed to clear graph db state";
+      console.error(errMsg);
+      throw new Error(errMsg);
+    }
+    logger.info("Dropping vertices and edges...");
+    await gremlin.iterate((g) => g.V().drop());
+  } catch (err) {
+    console.error(err);
+    await resetGraphDb(gremlin, i + 1);
+  }
+}
+
+/**
+ * Returns a random number between 0 and 1 based on a murmur hash
+ */
+function numericHash(s: string): number {
+  const INT32_MAX = 2147483648;
+  return x86.hash32(s, 0) / INT32_MAX;
+}
+
+
+function reverse(s: string) {
+  return s.split('').reverse().join('');
+}
+
