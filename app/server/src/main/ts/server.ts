@@ -8,6 +8,8 @@ import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
 import {graphClient} from "./server_module";
 import bodyParser = require("body-parser");
+import {GremlinConnection} from "./graph/gremlin_connection";
+import {GraphStats, graphStats} from "./index";
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -28,7 +30,7 @@ const flatMap = process.statics.flatMap;
  * Server instance running on Express middleware
  */
 export class Server {
-  constructor() {}
+  constructor(readonly gremlinClient: GremlinConnection) {}
 
   async start() {
     try {
@@ -163,6 +165,15 @@ export class Server {
       const data: graphmodel.Graph = { nodes, edges };
       console.log(data);
       res.send(data);
+    });
+
+    app.get("/stats/:seed", async (req: Request, res: Response) => {
+      // ignored for now
+      let seedUrl = req.params.seed;
+      seedUrl = "https://en.wikipedia.org/wiki/Main_Page";
+
+      const stats: GraphStats = await graphStats(this.gremlinClient, seedUrl);
+      res.send(stats);
     });
 
     app.listen(3000, () => console.log("Listening on port 3000"));

@@ -30,6 +30,7 @@ main() {
     --ignore dist \
     --ignore server \
     --watch web/ \
+    --watch static/ \
     --ext "ts,html,css" \
     --exec "npm run build:web:${webpack_mode}" &
 

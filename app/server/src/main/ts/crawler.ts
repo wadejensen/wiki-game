@@ -79,7 +79,7 @@ export class Crawler {
 
     // feedback priority queue results into crawler pipeline
     timer(1000, 1000).pipe(
-      mergeMap(() => from(this.queue.popMin(this.qps))),
+      mergeMap(() => from(this.queue.popMin(Math.ceil(this.qps)))),
       mergeMap((batch: [string, number][]) => from(batch)),
     ).subscribe((entry: [string, number]) =>
       this.source.next(new CrawlerTask(entry[0], entry[1]))

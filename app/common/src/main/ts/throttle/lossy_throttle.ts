@@ -33,8 +33,9 @@ export class LossyThrottle {
       console.debug(`Throttle ${this.name}: ${this.reqCount}qps`);
     }
     if (this.reqCount != 0 && this.queueDepth != 0) {
-      // We should never exceed reqPerSec, but if we do, bring the server down
-      if (this.reqCount > this.reqPerSec) sys.exit(1);
+      if (this.reqCount > this.reqPerSec) {
+        console.error(`Exceeded throttle limit: ${this.reqPerSec}. ${this.name} @ ${this.reqCount}qps`);
+      }
     }
     this.reqCount = Math.max(0, this.reqCount - this.reqPerSec)
   };

@@ -21,7 +21,9 @@ const s = new sigma(
 
 //renderGraph(s);
 
-setInterval(() => renderGraphLive2(s), 7000);
+renderGraphLive2(s);
+
+//setInterval(() => renderGraphLive2(s), 7000);
 
 async function renderGraph(s: Sigma): Promise<void> {
   const data = await getGraph();
@@ -43,6 +45,7 @@ async function renderGraphLive(s: Sigma): Promise<void> {
 
 async function renderGraphLive2(s: Sigma): Promise<void> {
   const data = await getGraphLive2();
+  console.log("Fetching graph data");
   console.log(data);
   s.graph.read(data);
   s.startForceAtlas2();

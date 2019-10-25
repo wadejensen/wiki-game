@@ -46,7 +46,6 @@ const select = gremlin.process.statics.select;
 
 const ASG_NAME = "wiki";
 
-new Server().start();
 try {
   start();
 } catch (err) {
@@ -124,6 +123,8 @@ async function start() {
     //setInterval(() => gremlin.toList(vertexShowQuery).then(logger.info), 2000);
 
     //await resetGraphDb(gremlin, 0);
+
+    const server = new Server(gremlin).start();
     const crawler = await wikipediaCrawler().start();
 
     // log crawler results
@@ -158,21 +159,9 @@ async function start() {
     setInterval(async () => {
         const stats = await scalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
         console.info(stats);
-        const params = {
-          MetricData: [
-            {
-              MetricName: 'CRAWLER_QUEUE_DEPTH',
-              Unit: 'None',
-              Value: stats.queueDepth,
-            },
-          ],
-          Namespace: 'WIKI'
-        };
-        return await cloudwatchClient
-          .putMetricData(params)
-          .promise()
+        await publishQueueDepthMetric(cloudwatchClient, stats.queueDepth);
     },
-      10000
+      30000
     );
     setInterval(async () =>
         console.info(await graphStats(gremlin, "https://en.wikipedia.org/wiki/Main_Page")),
@@ -209,7 +198,7 @@ async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void
   }
 }
 
-class ScalingStats {
+export class ScalingStats {
   constructor(
     readonly numPagesCrawled: number,
     readonly queueDepth: number,
@@ -221,7 +210,7 @@ class ScalingStats {
   }
 }
 
-class GraphStats {
+export class GraphStats {
   constructor(
     readonly firstDegreeVertices: number,
     readonly secondDegreeVertices: number,
@@ -246,7 +235,7 @@ async function scalingStats(
   return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
 }
 
-async function graphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
+export async function graphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
   return new GraphStats(
     await numVerticesQuery(gremlinClient, seedUrl, 1),
     await numVerticesQuery(gremlinClient, seedUrl, 2),
@@ -272,6 +261,26 @@ function numVerticesQuery(
     .next(query)
     .then(res => res.value as number)
 }
+
+async function publishQueueDepthMetric(
+    cloudwatchClient: CloudWatch,
+    queueDepth: number
+) {
+  const params = {
+    MetricData: [
+      {
+        MetricName: 'CRAWLER_QUEUE_DEPTH',
+        Unit: 'None',
+        Value: queueDepth,
+      },
+    ],
+    Namespace: 'WIKI'
+  };
+  return await cloudwatchClient
+    .putMetricData(params)
+    .promise()
+}
+
 
 //aws describe-auto-scaling-groups --auto-scaling-group-names wiki
 async function publishCrawlerMetrics(

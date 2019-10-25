@@ -228,17 +228,33 @@ input.parambox:focus, select.parambox:focus {
 
 .search-button {
     font-size: x-large;
-    height: 7vh;
+    height: 5vh;
     width:100%;
     white-space:nowrap;
     text-overflow:clip;
-    margin-top: 0.5em;
-    color: #f2f2f2;
-    background-color: lightcoral;
     z-index: 3;
     outline: none;
-    border: 0.1em solid #F06260;
-    box-shadow: 0 0 0.15em 0 #F06260;
+}
+
+#start-crawl-button {
+    color: #f2f2f2;
+    background-color: #208020;
+    border: 0.1em solid darkgreen;
+    /*box-shadow: 0 0 0.15em 0 lightgreen;*/
+}
+
+#pause-crawl-button {
+    color: #f2f2f2;
+    background-color: #bf890b;
+    border: 0.1em solid darkgoldenrod;
+    /*box-shadow: 0 0 0.15em 0 #F06260;*/
+}
+
+#reset-crawl-button {
+    color: #f2f2f2;
+    background-color: #cc0000;
+    border: 0.1em solid darkred;
+    /*box-shadow: 0 0 0.15em 0 deeppink;*/
 }
 
 /** apply a darker tint to clickable elements on hover **/
