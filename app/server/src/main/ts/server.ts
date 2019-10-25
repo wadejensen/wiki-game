@@ -7,9 +7,11 @@ import {process} from "gremlin";
 import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
 import {graphClient} from "./server_module";
-import bodyParser = require("body-parser");
+const bodyParser = require("body-parser");
 import {GremlinConnection} from "./graph/gremlin_connection";
-import {GraphStats, graphStats} from "./index";
+import {GraphStats, getGraphStats, getScalingStats, ScalingStats, ApplicationStats} from "./index";
+import {AutoScaling, CloudWatch} from "aws-sdk";
+import {Crawler} from "./crawler";
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -30,7 +32,13 @@ const flatMap = process.statics.flatMap;
  * Server instance running on Express middleware
  */
 export class Server {
-  constructor(readonly gremlinClient: GremlinConnection) {}
+  constructor(
+    readonly gremlinClient: GremlinConnection,
+    readonly crawler: Crawler,
+    readonly cloudwatchClient: CloudWatch,
+    readonly autoscalingClient: AutoScaling,
+    readonly asgName: string,
+  ) {}
 
   async start() {
     try {
@@ -169,11 +177,24 @@ export class Server {
 
     app.get("/stats/:seed", async (req: Request, res: Response) => {
       // ignored for now
-      let seedUrl = req.params.seed;
+      let seedUrl = `https://en.wikipedia.org/wiki/${req.params.seed}`;
       seedUrl = "https://en.wikipedia.org/wiki/Main_Page";
 
-      const stats: GraphStats = await graphStats(this.gremlinClient, seedUrl);
-      res.send(stats);
+      const graphStats: GraphStats = await getGraphStats(this.gremlinClient, seedUrl);
+      const scaleStats: ScalingStats = await getScalingStats(this.cloudwatchClient,
+        this.autoscalingClient, this.crawler, this.asgName);
+
+      const appStats = new ApplicationStats(
+        scaleStats.numPagesCrawled,
+        scaleStats.queueDepth,
+        scaleStats.instanceCount,
+        graphStats.firstDegreeVertices,
+        graphStats.secondDegreeVertices,
+        graphStats.thirdDegreeVertices,
+        graphStats.forthDegreeVertices,
+        graphStats.totalVertices,
+      );
+      res.send(appStats);
     });
 
     app.listen(3000, () => console.log("Listening on port 3000"));

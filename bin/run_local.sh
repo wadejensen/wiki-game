@@ -41,7 +41,13 @@ main() {
     --ignore web \
     --watch server/src \
     --ext ts \
-    --exec "npm run build:server:${webpack_mode} && ../bin/run_local_graph_db.sh && CONF_FILE=${CONF_FILE} SEED_FILE=${SEED_FILE} npm run deploy-local"
+    --exec \
+    "npm run build:server:${webpack_mode} && \\
+      ../bin/run_local_graph_db.sh && \\
+      CONF_FILE=${CONF_FILE} \\
+      SEED_FILE=${SEED_FILE} \\
+      AWS_DEFAULT_REGION=ap-southeast-2 \\
+      npm run deploy-local"
 }
 
 main "$@"

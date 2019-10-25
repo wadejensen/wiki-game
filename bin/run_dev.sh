@@ -26,6 +26,7 @@ main() {
   docker run -it \
     --env CONF_FILE="${CONF_FILE}" \
     --env SEED_FILE="${SEED_FILE}" \
+    --env AWS_DEFAULT_REGION="ap-southeast-2" \
     --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}"\
     -p 3000:3000 \
     wiki

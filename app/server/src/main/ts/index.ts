@@ -2,30 +2,21 @@ import fs from "fs";
 import * as AWS from 'aws-sdk';
 import * as gremlin from "gremlin";
 import {process as p} from "gremlin";
-import {
-  graphClient,
-  gremlinConcurrency,
-  redisClient,
-  wikipediaCrawler
-} from "./server_module";
+import {graphClient, gremlinConcurrency, wikipediaCrawler} from "./server_module";
 import {Crawler, CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph";
 // RxJS v6+
 import {from, of} from "rxjs";
-import {catchError, concatMap, mergeMap, tap} from "rxjs/operators";
+import {catchError, mergeMap, tap} from "rxjs/operators";
 import {Server} from "./server";
 import {URL} from "url";
-import {GremlinConnection, GremlinQueryBuilder} from "./graph/gremlin_connection";
+import {GremlinConnection} from "./graph/gremlin_connection";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {sys} from "typescript";
-import GraphTraversal = p.GraphTraversal;
-import {createGraphDBConnection} from "./graph/gremlin";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
-import CloudWatch = require("aws-sdk/clients/cloudwatch");
-import {AutoScaling} from "aws-sdk";
+import GraphTraversal = p.GraphTraversal;
 import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
-
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -124,8 +115,10 @@ async function start() {
 
     //await resetGraphDb(gremlin, 0);
 
-    const server = new Server(gremlin).start();
+    const cloudwatchClient = new AWS.CloudWatch({ region: 'ap-southeast-2' });
+    const autoscalingClient = new AWS.AutoScaling({ region: 'ap-southeast-2' });
     const crawler = await wikipediaCrawler().start();
+    const server = new Server(gremlin, crawler, cloudwatchClient, autoscalingClient, ASG_NAME).start();
 
     // log crawler results
     crawler.results.subscribe((record: CrawlerRecord) => {
@@ -153,18 +146,15 @@ async function start() {
     seedUrls.forEach(url => crawler.addSeed(new URL(url)));
 
     // publish metrics
-    const cloudwatchClient = new AWS.CloudWatch({ region: 'ap-southeast-2' });
-    const autoscalingClient = new AWS.AutoScaling({ region: 'ap-southeast-2' })
-
     setInterval(async () => {
-        const stats = await scalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
+        const stats = await getScalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
         console.info(stats);
         await publishQueueDepthMetric(cloudwatchClient, stats.queueDepth);
     },
       30000
     );
     setInterval(async () =>
-        console.info(await graphStats(gremlin, "https://en.wikipedia.org/wiki/Main_Page")),
+        console.info(await getGraphStats(gremlin, "https://en.wikipedia.org/wiki/Main_Page")),
       10000
     );
   } catch (err) {
@@ -198,6 +188,23 @@ async function resetGraphDb(gremlin: GremlinConnection, i: number): Promise<void
   }
 }
 
+export class ApplicationStats {
+  constructor(
+    readonly numPagesCrawled: number,
+    readonly queueDepth: number,
+    readonly instanceCount: number,
+    readonly firstDegreeVertices: number,
+    readonly secondDegreeVertices: number,
+    readonly thirdDegreeVertices: number,
+    readonly forthDegreeVertices: number,
+    readonly totalVertices: number,
+  ) {}
+
+  toString() {
+    return JSON.stringify(this, null, 2);
+  }
+}
+
 export class ScalingStats {
   constructor(
     readonly numPagesCrawled: number,
@@ -216,6 +223,7 @@ export class GraphStats {
     readonly secondDegreeVertices: number,
     readonly thirdDegreeVertices: number,
     readonly forthDegreeVertices: number,
+    readonly totalVertices: number,
   ) {}
 
   toString() {
@@ -223,9 +231,9 @@ export class GraphStats {
   }
 }
 
-async function scalingStats(
-    cloudwatchClient: CloudWatch,
-    autoscalingClient: AutoScaling,
+export async function getScalingStats(
+    cloudwatchClient: AWS.CloudWatch,
+    autoscalingClient: AWS.AutoScaling,
     crawler: Crawler,
     asgName: string,
 ): Promise<ScalingStats> {
@@ -235,12 +243,13 @@ async function scalingStats(
   return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
 }
 
-export async function graphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
+export async function getGraphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
   return new GraphStats(
     await numVerticesQuery(gremlinClient, seedUrl, 1),
     await numVerticesQuery(gremlinClient, seedUrl, 2),
     await numVerticesQuery(gremlinClient, seedUrl, 3),
     await numVerticesQuery(gremlinClient, seedUrl, 4),
+    await countVerticesQuery(gremlinClient),
   );
 }
 
@@ -262,8 +271,16 @@ function numVerticesQuery(
     .then(res => res.value as number)
 }
 
+function countVerticesQuery(gremlinConnection: GremlinConnection): Promise<number> {
+  const query = (g: GraphTraversal) => g.V().count();
+  return gremlinConnection
+    .next(query)
+    .then(res => res.value as number)
+
+}
+
 async function publishQueueDepthMetric(
-    cloudwatchClient: CloudWatch,
+    cloudwatchClient: AWS.CloudWatch,
     queueDepth: number
 ) {
   const params = {
@@ -284,8 +301,8 @@ async function publishQueueDepthMetric(
 
 //aws describe-auto-scaling-groups --auto-scaling-group-names wiki
 async function publishCrawlerMetrics(
-    cloudwatchClient: CloudWatch,
-    autoscalingClient: AutoScaling,
+    cloudwatchClient: AWS.CloudWatch,
+    autoscalingClient: AWS.AutoScaling,
     crawler: Crawler
 ): Promise<void> {
   await cloudwatchClient.putMetricData().promise();
@@ -307,7 +324,7 @@ async function publishCrawlerMetrics(
   };
 }
 
-async function getAutoscalingGroupSize(autoscalingClient: AutoScaling, asgName: string): Promise<number> {
+async function getAutoscalingGroupSize(autoscalingClient: AWS.AutoScaling, asgName: string): Promise<number> {
   const resp = await autoscalingClient
     .describeAutoScalingGroups({ AutoScalingGroupNames: [ASG_NAME] })!
     .promise()

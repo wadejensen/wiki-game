@@ -8,7 +8,7 @@ const PAGE_NAME_PREFIX_BLACKLIST = new Set([
   "Special",
   "Talk",
   "Template",
-  "Template talk",
+  "Template_talk",
   "Wikipedia",
 ]);
 

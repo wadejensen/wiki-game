@@ -119,6 +119,7 @@ main() {
     --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}" \
     --env CONF_FILE="${MOUNTED_CONF_DIR}/wiki.json" \
     --env SEED_FILE="${MOUNTED_CONF_DIR}/crawler_seed.txt" \
+    --env AWS_DEFAULT_REGION="ap-southeast-2" \
     -p 3000:3000 \
     wadejensen/wiki:latest \
     > ~/server.log 2>&1

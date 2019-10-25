@@ -202,8 +202,17 @@ input.searchbox:focus, input.parambox:focus, select.parambox {
     padding: 0.35em 1em 0.35em 1em;
 }
 
+#content {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    position: relative;
+    width: 100%;
+    height: 90%;
+}
+
 #graph {
-    height:90%;
+    height:100%;
     width:100%;
 }
 
@@ -252,9 +261,35 @@ input.parambox:focus, select.parambox:focus {
 
 #reset-crawl-button {
     color: #f2f2f2;
-    background-color: #cc0000;
+    background-color: #e60000;
     border: 0.1em solid darkred;
     /*box-shadow: 0 0 0.15em 0 deeppink;*/
+}
+
+#stats-container {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    /*height: 33%;*/
+    /*width: 15%;*/
+    z-index: 3;
+    padding: 1em;
+    background-color: #333;
+    text-overflow: clip;
+    text-wrap: none;
+    /*word-wrap: break-word;*/
+    /*overflow-wrap: break-word;*/
+    color: white;
+}
+
+#stats-container p {
+    margin: 0;
+    white-space: pre;
+    font-family: monospace;
+}
+
+.stats-value {
+    color: coral;
 }
 
 /** apply a darker tint to clickable elements on hover **/
