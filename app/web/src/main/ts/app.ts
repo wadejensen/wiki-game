@@ -1,8 +1,13 @@
 // @ts-ignore
 
-import {getGraph, getGraphLive, getGraphLive2, getStats} from "./endpoints";
+import {getGraph, getStats, postCrawlerAction} from "./endpoints";
 import {ApplicationStats} from "../../../../server/src/main/ts";
-import {getStatsContainer} from "./dom/dom_element_locator";
+import {
+  getPauseCrawlButton,
+  getResetCrawlButton,
+  getStartCrawlButton,
+  getStatsContainer
+} from "./dom/dom_element_locator";
 
 declare const sigma: any;
 
@@ -56,4 +61,23 @@ async function updateStats() {
 <p>4th degree links: <span class="stats-value">${stats.forthDegreeVertices.toLocaleString() || "no data"}</span></p>
 <p> All Wikis found: <span class="stats-value">${stats.totalVertices.toLocaleString() || "no data"}</span></p>
 `
+}
+
+function setupListeners() {
+  console.log("Setting up event listeners");
+  getStartCrawlButton().addEventListener("click", () => {
+    //TODO(wadejensen) load seed
+    console.log("Starting crawler");
+    postCrawlerAction("start", {});
+  });
+  getPauseCrawlButton().addEventListener("click", () => {
+    console.log("Pausing crawler");
+    postCrawlerAction("pause", {});
+  });
+  getResetCrawlButton().addEventListener("click", async () => {
+    console.log("Reset crawler");
+    console.log(new Date());
+    const resp = await postCrawlerAction("reset", {});
+    console.log(new Date());
+  });
 }

@@ -102,28 +102,28 @@ async function start() {
   try {
     const seedUrls = getSeed();
     logger.info(`Seed urls: \n${seedUrls}`);
-    //const redisConnection = redisClient("debugger");
-    //await redisConnection.del("history");
-    //await redisConnection.del("queue");
+    const redisConnection = redisClient("debugger");
+    await redisConnection.del("history");
+    await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
 
     const vertexCountQuery = (g: GraphTraversal) => g.V().count();
     const vertexShowQuery = (g: GraphTraversal) => g.V().limit(10).valueMap();
 
     logger.info("Drop all vertices");
-    //await gremlin.iterate((g: GraphTraversal) => g.V().drop());
+    await gremlin.iterate((g: GraphTraversal) => g.V().drop());
     await gremlin
       .toList(vertexCountQuery)
       .then(cntArr => logger.info(`Num vertices = ${cntArr[0]}`));
 
     logger.info("Schedule vertex count");
-    setInterval(() => gremlin.toList(vertexCountQuery).then(logger.info), 1000);
+    //setInterval(() => gremlin.toList(vertexCountQuery).then(logger.info), 1000);
     //setInterval(() => gremlin.toList(vertexShowQuery).then(logger.info), 2000);
 
-    //await resetGraphDb(gremlin, 0);
+    await resetGraphDb(gremlin, 0);
 
-    const cloudwatchClient = new AWS.CloudWatch({ region: 'ap-southeast-2' });
-    const autoscalingClient = new AWS.AutoScaling({ region: 'ap-southeast-2' });
+    const cloudwatchClient = new AWS.CloudWatch({ region: process.env.AWS_DEFAULT_REGION });
+    const autoscalingClient = new AWS.AutoScaling({ region: process.env.AWS_DEFAULT_REGION });
     const crawler = await wikipediaCrawler().start();
     const server = new Server(gremlin, crawler, cloudwatchClient, autoscalingClient, ASG_NAME).start();
 
@@ -151,7 +151,7 @@ async function start() {
       )
       .subscribe(() => logger.info("Flushed"));
 
-    seedUrls.forEach(url => crawler.addSeed(new URL(url)));
+    //seedUrls.forEach(url => crawler.addSeed(new URL(url)));
 
     // publish metrics
     setInterval(async () => {

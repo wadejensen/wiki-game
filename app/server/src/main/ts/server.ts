@@ -1,6 +1,6 @@
 import compression from "compression"
 import express, {Request, Response} from "express";
-
+import {URL} from "url";
 import {sys} from "typescript";
 import * as path from "path";
 import {process} from "gremlin";
@@ -165,6 +165,33 @@ export class Server {
         graphStats.totalVertices,
       );
       res.send(appStats);
+    });
+
+    app.post("/crawler/control/:action", async (req: Request, res: Response) => {
+      const action = req.params.action;
+      console.log(`action=${action}`);
+      if (action == "start") {
+        console.log("Starting crawler");
+        await this.crawler.enable();
+        await Async.delayP(() =>
+          this.crawler.addSeed(new URL("https://en.wikipedia.org/wiki/Main_Page")),
+          6000
+        );
+      } else if (action == "pause") {
+        console.log("Pausing crawler");
+        await this.crawler.pause();
+      } else if (action == "reset") {
+        console.log("Reseting crawler");
+        await this.crawler.reset();
+        await Async.delay(() => resetGraphDb(this.gremlinClient, 0), 3000);
+        await Async.delay(() => resetGraphDb(this.gremlinClient, 0), 10000);
+        res.status(202).send();
+      } else {
+        const errMsg = `Unknown crawler action: ${action}`;
+        res.status(400).send(errMsg);
+        throw new Error(errMsg)
+      }
+
     });
 
     app.listen(3000, () => console.log("Listening on port 3000"));

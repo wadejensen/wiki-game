@@ -52,6 +52,30 @@ export class Crawler {
     return this.queue.size();
   }
 
+  async enable(): Promise<void> {
+    setTimeout(() => this.flag.set(), 5000);
+  }
+
+  async pause(): Promise<number> {
+    return this.flag.clear();
+  }
+
+  async reset(): Promise<void> {
+    await this.clearGraphDb();
+    setTimeout(() => this.clearGraphDb(), 100);
+    setTimeout(() => this.clearGraphDb(), 200);
+    setTimeout(() => this.clearGraphDb(), 500);
+    setTimeout(() => this.clearGraphDb(), 1000);
+    setTimeout(() => this.clearGraphDb(), 2000);
+    setTimeout(() => this.clearGraphDb(), 4000);
+  }
+
+  private async clearGraphDb() {
+    await this.flag.clear();
+    await this.queue.del();
+    await this.crawlHistory.del();
+  }
+
   async start() {
     Preconditions.checkState(!this.isStarted, "Crawler has already been started");
     this.isStarted = true;
