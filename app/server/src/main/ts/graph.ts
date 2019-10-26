@@ -2,16 +2,10 @@ import {CrawlerRecord} from "./crawler";
 import {foldApply, partition} from "../../../../common/src/main/ts/fp/array";
 import {process, structure} from "gremlin";
 import {inferPageName} from "./wiki";
-import {
-  GremlinConnection,
-  GremlinQueryBuilder
-} from "./graph/gremlin_connection";
-import GraphTraversal = process.GraphTraversal;
+import {GremlinConnection, GremlinQueryBuilder} from "./graph/gremlin_connection";
 import {gremlinBatchSize} from "./server_module";
 import {Async} from "../../../../common/src/main/ts/async";
-import {sys} from "typescript";
-import {logger} from "../../../../common/src/main/ts/logger";
-import Vertex = structure.Vertex;
+import GraphTraversal = process.GraphTraversal;
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -81,50 +75,6 @@ function buildInsertChildrenQuery(
     );
 }
 
-function buildInsertChildQuery({
-    g,
-    parentUrl,
-    parentPageName,
-    childUrl,
-    childPageName,
-}: {
-    g: GraphTraversal,
-    parentUrl: string,
-    parentPageName: string,
-    childUrl: string,
-    childPageName: string,
-}): GraphTraversal {
-  return g
-    .V()
-    .has("url", "href", parentUrl)
-    .fold()
-    .coalesce(
-      unfold(),
-      addV("url")
-        .property("href", parentUrl)
-        .property("name", parentPageName)
-    )
-    .V() //
-    .has("url", "href", childUrl)
-    .fold()
-    .coalesce(
-      unfold(),
-      addV("url")
-        .property("href", childUrl)
-        .property("name", childPageName)
-    )
-    .V() //
-    .has("url", "href", parentUrl).as("parent")
-    .V() //
-    .has("url", "href", childUrl).as("child")
-    .coalesce(
-      inE().where(outV().as("parent")),
-      addE("link").from_("parent")
-        .property("in", childPageName)
-        .property("out", parentPageName)
-    );
-}
-
 function buildInsertChildQuery2({
     g,
     parentId,
@@ -166,34 +116,3 @@ function buildInsertChildQuery2({
     );
 }
 
-async function doTheNeedful(gremlin: GremlinConnection) {
-  console.log("Add wadejensen");
-  const addVertex = (g: GraphTraversal) => g
-  //.V()
-    .addV("url")
-    .property("href", "wadejensen")
-    .property("nameeee", "Main_page");
-
-  const resp0 = await gremlin.toList(addVertex);
-  console.log(resp0);
-
-  console.log("Add jensenwade");
-  const addVertexx = (g: GraphTraversal) => g
-  //.V()
-    .addV("url")
-    .property("href", "jensenwade")
-    .property("nameeee", "hello world");
-
-  const resp1 = await gremlin.iterate(addVertexx);
-  console.log(resp1);
-
-  const getVertices = (g: GraphTraversal) => g
-    .V()
-    .limit(10)
-    .valueMap();
-
-  console.log("Report results");
-  const resp2 = await gremlin.toList(getVertices);
-  console.log(resp2);
-  console.log(resp2);
-}
