@@ -111,8 +111,8 @@ async function start() {
     const vertexCountQuery = (g: GraphTraversal) => g.V().count();
     const vertexShowQuery = (g: GraphTraversal) => g.V().limit(10).valueMap();
 
-    logger.info("Drop all vertices");
-    await gremlin.iterate((g: GraphTraversal) => g.V().drop());
+    // logger.info("Drop all vertices");
+    // await gremlin.iterate((g: GraphTraversal) => g.V().drop());
     await gremlin
       .toList(vertexCountQuery)
       .then(cntArr => logger.info(`Num vertices = ${cntArr[0]}`));

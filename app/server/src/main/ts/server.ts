@@ -117,12 +117,13 @@ export class Server {
 
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
         const id = vert["@value"].id["@value"].toString();
-        const label = vert["@value"].properties["name"][0]["@value"].value;
+        const rawLabel = vert["@value"].properties["name"][0]["@value"].value
+        const sanitizedLabel = decodeURI(rawLabel).replace(/_/g, " ");
         return {
           id: id,
-          label: label,
-          x: numericHash(label),
-          y: numericHash(reverse(label)),
+          label: sanitizedLabel,
+          x: numericHash(sanitizedLabel),
+          y: numericHash(reverse(sanitizedLabel)),
           color: "#000",
           size: 5,
         }
