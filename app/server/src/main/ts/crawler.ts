@@ -83,9 +83,7 @@ export class Crawler {
       filterByPromise(async (task: CrawlerTask) =>
         !(await this.crawlHistory.contains(task.url))),
       mergeMap((task) =>
-        from(
-          this.crawl(task)
-        ).pipe(
+        from(this.crawl(task)).pipe(
           catchError((err) => {
             console.log(err);
             this.errors.next(new CrawlerError(task.url, err));

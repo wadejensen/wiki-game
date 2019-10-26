@@ -24,6 +24,7 @@ import {Async} from "../../../../common/src/main/ts/async";
 import GraphTraversal = p.GraphTraversal;
 import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
 import {Flag} from "./flag";
+import {CloudWatch} from "aws-sdk";
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;

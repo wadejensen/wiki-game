@@ -99,8 +99,8 @@ export class Server {
             as("edges").
             inV().
             dedup().
-            order().by(bothE().count(), desc).
-            limit(10).
+            order().by(bothE().count(), desc).by("name", desc).
+            limit(6).
             select("edges").
             subgraph("subgraph").
             inV()
