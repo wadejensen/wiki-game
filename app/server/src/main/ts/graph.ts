@@ -33,7 +33,7 @@ export async function insertCrawlerRecord(
   const batchesOfChildren: string[][] = partition(record.childUrls, BATCH_SIZE);
 
   const insertChildrenQueries: GremlinQueryBuilder[] = batchesOfChildren.map(
-    (children: string[]) => buildInsertChildrenQuery(record, parentVertexId, children));
+    (children: string[]) => buildInsertChildrenQuery(record, parentVertexId, children, record.childUrls.length));
 
   // insert batches of children sequentially
   return Async.reduceSerial<GremlinQueryBuilder, void>(
@@ -48,18 +48,24 @@ function insertParentVertexIfNotExists(g: GraphTraversal, record: CrawlerRecord)
     .has("url", "href", record.url)
     .fold()
     .coalesce(
-      unfold(),
+      unfold()
+        .property("numLinks", record.childUrls.length)
+        .property("crawled", "true"),
       addV("url")
         .property("href", record.url)
         .property("name", inferPageName(record.url))
-        .property("degree", record.degree))
+        .property("degree", record.degree)
+        .property("numLinks", record.childUrls.length)
+        .property("crawled", "true")
+    )
 }
 
 // Lazily build batch insert query
 function buildInsertChildrenQuery(
     record: CrawlerRecord,
     parentId: number,
-    children: string[]
+    children: string[],
+    numTotalChildren: number,
 ): (g: GraphTraversal) => GraphTraversal {
   return (g: GraphTraversal) =>
     foldApply<GraphTraversal, string>(g, (g, child) => buildInsertChildQuery2({
@@ -102,6 +108,8 @@ function buildInsertChildQuery2({
         .property("href", childUrl)
         .property("name", childPageName)
         .property("degree", childDegree)
+        .property("numLinks", 0)
+        .property("crawled", "false")
     )
     .V() //
     .has("url", "href", parentUrl).as("parent")
@@ -115,4 +123,3 @@ function buildInsertChildQuery2({
         .property("degree", childDegree)
     );
 }
-

@@ -17,6 +17,7 @@ import {x86} from "murmurhash3js"
 import GraphTraversal = process.GraphTraversal;
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
+import {TryCatch} from "../../../../common/src/main/ts/fp/try";
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;
@@ -112,20 +113,23 @@ export class Server {
         cap("subgraph")
       ).then(r => r.value);
 
-      //console.log(sg);
+      console.log(sg);
       console.log("Stop gremlin request");
+
+      //sys.exit(1);
 
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
         const id = vert["@value"].id["@value"].toString();
-        const rawLabel = vert["@value"].properties["name"][0]["@value"].value
-        const sanitizedLabel = decodeURI(rawLabel).replace(/_/g, " ");
+        const rawLabel = vert["@value"].properties["name"][0]["@value"].value;
+        const numLinks = getNumLinks(vert);
+        const sanitizedLabel = decodeURI(rawLabel).replace(/_/g, " ") + ` (${numLinks.toString()})`;
         return {
           id: id,
           label: sanitizedLabel,
           x: numericHash(sanitizedLabel),
           y: numericHash(reverse(sanitizedLabel)),
           color: "#000",
-          size: 5,
+          size: getNodeSize(numLinks),
         }
       });
 
@@ -227,3 +231,14 @@ function reverse(s: string) {
   return s.split('').reverse().join('');
 }
 
+function getNodeSize(numLinks: number): number {
+  return Math.pow(Math.log(numLinks + 1), 2);
+}
+
+function getNumLinks(v: graphson.Vertex): number {
+  return TryCatch(() => {
+    return (v as any)["@value"]
+      .properties["numLinks"][0]["@value"]
+      .value["@value"] as number || 0
+  }).getOrElse(() => 0);
+}

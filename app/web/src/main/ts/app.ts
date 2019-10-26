@@ -22,7 +22,9 @@ const s = new sigma(
       container: document.getElementById('graph'),
       type: 'canvas'
     }],
-    settings: {}
+    settings: {
+      labelThreshold: 1,
+    }
   }
 );
 
