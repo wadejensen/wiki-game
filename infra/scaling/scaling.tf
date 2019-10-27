@@ -55,7 +55,7 @@ resource "aws_lb_target_group" "target" {
   deregistration_delay = 60
   health_check {
     interval = 15
-    path = "/"
+    path = "/healthz"
     port = "3000"
     protocol = "HTTP"
     timeout = 10

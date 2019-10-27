@@ -119,6 +119,7 @@ resource "aws_security_group" "public" {
       "103.243.110.0/24",
       "10.0.0.0/12",
     ]
+    self = true
   }
 
   // ALLOW ALL
@@ -126,7 +127,13 @@ resource "aws_security_group" "public" {
     from_port = 0
     to_port = 0
     protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [
+      "49.255.94.0/24",
+      "103.243.110.0/24",
+      "10.0.0.0/12",
+      "0.0.0.0/0"
+    ]
+    self = true
   }
 }
 
