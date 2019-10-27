@@ -103,11 +103,36 @@ resource "aws_autoscaling_policy" "scaling_policy" {
   estimated_instance_warmup = 30
 
   target_tracking_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ASGAverageCPUUtilization"
+    customized_metric_specification {
+      metric_name = "CRAWLER_QUEUE_DEPTH"
+      namespace   = "WIKI"
+      statistic   = "Maximum"
     }
-    target_value = 50.0
+    target_value = 20000
   }
+}
+
+target_tracking_scaling_policy_configuration {
+  customized_metric_specification {
+    namespace   = "MyCustomMetricsNamespace"
+    metric_name = "InflightRequests"
+    statistic   = "Average"
+    unit        = "None"
+
+    dimensions {
+      name  = "Environment"
+      value = "production"
+    }
+
+    dimensions {
+      name  = "Service"
+      value = "myservice"
+    }
+  }
+
+  target_value       = "100"
+  scale_in_cooldown  = "300" # seconds
+  scale_out_cooldown = "60" # seconds
 }
 
 resource "aws_launch_configuration" "ec2_conf" {

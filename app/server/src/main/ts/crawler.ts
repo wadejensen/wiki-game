@@ -60,6 +60,10 @@ export class Crawler {
     return this.flag.clear();
   }
 
+  async enabled(): Promise<boolean> {
+    return this.flag.enabled();
+  }
+
   async reset(): Promise<void> {
     await this.clearGraphDb();
     setTimeout(() => this.clearGraphDb(), 100);

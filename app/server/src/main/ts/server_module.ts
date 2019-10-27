@@ -16,7 +16,6 @@ import * as fs from "fs";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {range} from "../../../../common/src/main/ts/fp/array";
-import {Server} from "./server";
 import {Flag} from "./flag";
 import {RedisFlag} from "./cache/redis_flag";
 import {RemoteSet} from "./remote_set";

@@ -27,7 +27,9 @@ main() {
     --env CONF_FILE="${CONF_FILE}" \
     --env SEED_FILE="${SEED_FILE}" \
     --env AWS_DEFAULT_REGION="ap-southeast-2" \
-    --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}"\
+    --volume "${HOST_CONF_DIR}:${MOUNTED_CONF_DIR}" \
+    --env AWS_PROFILE="wjensen" \
+    --volume ~/.aws/credentials:/root/.aws/credentials \
     -p 3000:3000 \
     wiki
 }

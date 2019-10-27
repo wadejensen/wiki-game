@@ -6,18 +6,18 @@ import * as path from "path";
 import {process} from "gremlin";
 import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
-import {graphClient} from "./server_module";
-const bodyParser = require("body-parser");
-import {GremlinConnection, GremlinQueryBuilder} from "./graph/gremlin_connection";
-import {GraphStats, getGraphStats, getScalingStats, ScalingStats, ApplicationStats} from "./index";
+import {GremlinConnection} from "./graph/gremlin_connection";
+import {ApplicationStats, getGraphStats, getScalingStats, GraphStats, ScalingStats} from "./index";
 import {AutoScaling, CloudWatch} from "aws-sdk";
 import {Crawler} from "./crawler";
 
 import {x86} from "murmurhash3js"
-import GraphTraversal = process.GraphTraversal;
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
 import {TryCatch} from "../../../../common/src/main/ts/fp/try";
+
+const bodyParser = require("body-parser");
+
 
 const addV = process.statics.addV;
 const addE = process.statics.addE;

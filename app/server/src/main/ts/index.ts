@@ -11,20 +11,18 @@ import {
 } from "./server_module";
 import {Crawler, CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph";
-// RxJS v6+
+
 import {from, of} from "rxjs";
 import {catchError, mergeMap, tap} from "rxjs/operators";
-import {resetGraphDb, Server} from "./server";
-import {URL} from "url";
+import {Server} from "./server";
 import {GremlinConnection} from "./graph/gremlin_connection";
 import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {sys} from "typescript";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
-import GraphTraversal = p.GraphTraversal;
 import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
 import {Flag} from "./flag";
-import {CloudWatch} from "aws-sdk";
+import GraphTraversal = p.GraphTraversal;
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -51,53 +49,6 @@ try {
   logger.error(err);
   sys.exit();
 }
-
-// async function start() {
-//   const g = await createGraphDB();
-//   await g.V().drop().iterate();
-//   await g
-//     .addV("url")
-//       .property("hreff", "en.wikipedia.com/wiki/Main_page")
-//       .property("namee", "Main_page")
-//     .iterate();
-//
-//   setTimeout(() => {
-//     g.V().limit(10).valueMap().toList().
-//     then(data => {
-//       console.info(data);
-//     }).catch(error => {
-//       console.info('ERROR', error);
-//     });
-//   }, 1000);
-//
-//   const gremlin: GremlinConnection = await graphClient();
-//   const addVertex = (grr: GraphTraversal) => grr
-//     .V()
-//     .addV("url")
-//     .property("hreffff", "en.wikipedia.com/wiki/Main_page")
-//     .property("nameeee", "Main_page");
-//
-//   const resp = await gremlin.iterate(addVertex);
-//   console.info(resp);
-//   setTimeout(() => {
-//     g.V().limit(10).valueMap().toList().
-//     then(data => {
-//       console.info("Part 1");
-//       console.info(data);
-//     }).catch(error => {
-//       console.info('ERROR', error);
-//     });
-//   }, 1000);
-//   setTimeout(() => {
-//     gremlin.toList((ggrr: any) => ggrr.V().limit(10).valueMap()).
-//     then(data => {
-//       console.info("Part 2");
-//       console.info(data);
-//     }).catch(error => {
-//       console.info('ERROR', error);
-//     });
-//   }, 1000);
-// }
 
 async function start() {
   try {
@@ -158,7 +109,7 @@ async function start() {
     setInterval(async () => {
         const stats = await getScalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
         console.info(stats);
-        await publishQueueDepthMetric(cloudwatchClient, stats.queueDepth);
+        await publishQueueDepthMetric(cloudwatchClient, crawler, stats.queueDepth);
     },
       30000
     );
@@ -289,14 +240,17 @@ function countVerticesQuery(gremlinConnection: GremlinConnection): Promise<numbe
 
 async function publishQueueDepthMetric(
     cloudwatchClient: AWS.CloudWatch,
-    queueDepth: number
+    crawler: Crawler,
+    queueDepth: number,
 ) {
+  // Publish a queue depth of zero when the crawler is paused
+  const metricValue = (await crawler.enabled()) ? queueDepth : 0;
   const params = {
     MetricData: [
       {
         MetricName: 'CRAWLER_QUEUE_DEPTH',
         Unit: 'None',
-        Value: queueDepth,
+        Value: metricValue,
       },
     ],
     Namespace: 'WIKI'
