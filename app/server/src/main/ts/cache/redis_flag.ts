@@ -8,10 +8,6 @@ export class RedisFlag implements Flag {
   enabled(): Promise<boolean> {
     return this.redisClient
       .get(this.name)
-      .then(resp => {
-        console.log(`Enabled = ${resp}`);
-        return resp;
-      })
       .then(resp => resp == RedisFlag.ENABLED)
   }
 

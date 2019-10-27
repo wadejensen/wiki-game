@@ -14,9 +14,10 @@ html, body {
     top: 0;
     display:flex;
     flex-direction:row;
+    flex-wrap: wrap;
     overflow:visible;
     width: 100%;
-    height: 8vh;
+    height: 16vh;
     padding: 0.6vh 2vw;
     z-index: 1;
     background-color: #333;
@@ -25,7 +26,8 @@ html, body {
 .branding {
     display:flex;
     align-items:center;
-    width: 25%;
+    /*width: 30%;*/
+    z-index: 2;
 }
 
 .branding a {
@@ -33,7 +35,7 @@ html, body {
     display: flex;
     color: #f2f2f2;
     text-align: center;
-    padding: 1vh 1.5vw;
+    padding: 0em 0.5em;
     text-decoration: none;
 }
 
@@ -66,11 +68,19 @@ html, body {
     align-content: flex-start;
     align-items: flex-start;
     position: relative;
-    padding: 1vh 1.5vw;
+    padding: 0.25em 0.5vw;
     width:50%;
     max-width: 400px;
     text-align: center;
     z-index:2;
+}
+
+.search-container-hidden {
+    width: 10%;
+}
+
+.expensive-search-container-hidden {
+    width: 20%;
 }
 
 #search-suggestions {
@@ -101,8 +111,8 @@ html, body {
 
 .searchbox, input.parambox, select.parambox, p.parambox {
     font-size: large;
-    height: 5vh;
-    width:100%;
+    /*height: 5vh;*/
+    width: 40vw;
     white-space:nowrap;
     text-overflow:clip;
     padding:0.8em;
@@ -163,20 +173,12 @@ input.searchbox:focus, input.parambox:focus, select.parambox {
     color: #8c8c8c;
 }
 
-.search-container-hidden {
-    width: 10%;
-}
-
-.expensive-search-container-hidden {
-    width: 20%;
-}
-
 .search-criteria {
     width: 100%;
     /** element hidden until element style is set dynamically by js */
     display:flex;
     position: relative;
-    align-items:flex-start;
+    align-items: flex-start;
     flex-direction:column;
     background-color: #464646;
     border-radius: 0.4em;
@@ -200,6 +202,20 @@ input.searchbox:focus, input.parambox:focus, select.parambox {
     align-items:flex-start;
     flex-direction:column;
     padding: 0.35em 1em 0.35em 1em;
+}
+
+#search-group {
+    display:flex;
+    flex-direction:row;
+}
+
+#button-group {
+    display:flex;
+    flex-direction:row;
+    overflow:visible;
+    padding-left: 3em;
+    /*margin-left: -2em;*/
+    /*margin-right: -2em;*/
 }
 
 #content {
@@ -239,6 +255,7 @@ input.parambox:focus, select.parambox:focus {
     font-size: x-large;
     height: 5vh;
     width:100%;
+    padding: 0.25em;
     white-space:nowrap;
     text-overflow:clip;
     z-index: 3;
@@ -314,12 +331,6 @@ input.parambox:focus, select.parambox:focus {
     color: coral
 }
 
-.flatmates-photo {
-    max-width: 25vw;
-    max-height: 15vw;
-    padding: 0.5em;
-}
-
 .info-window-details {
     margin: 0;
     padding: 0;
@@ -343,6 +354,11 @@ input.parambox:focus, select.parambox:focus {
 .refine-hidden {
     height: 0;
     width: 0;
+}
+
+.break {
+    flex-basis: 100%;
+    height: 0;
 }
 
 /*

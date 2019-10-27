@@ -24,6 +24,8 @@ const s = new sigma(
     }],
     settings: {
       labelThreshold: 1,
+      labelColor: "node",
+      edgeColor: "target",
     }
   }
 );
@@ -43,6 +45,7 @@ async function renderGraph(s: Sigma): Promise<void> {
   s.graph.clear();
   s.graph.read(data);
   s.startForceAtlas2();
+  setTimeout(function() {s.killForceAtlas2()}, 100);
   s.refresh();
 }
 

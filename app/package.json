@@ -60,6 +60,7 @@
     "rxjs": "^6.5.3",
     "tracer": "^1.0.1",
     "typescript": "3.4.2",
+    "wordwrap": "^1.0.0",
     "yargs": "^14.0.0"
   },
   "engines": {

@@ -124,7 +124,6 @@ export class Crawler {
   }
 
   private async crawl(task: CrawlerTask): Promise<CrawlerRecord> {
-    console.log(task);
     const html = await this.httpClient
       .get(task.url)
       .then(resp => resp.text());

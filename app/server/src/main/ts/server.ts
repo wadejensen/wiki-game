@@ -90,7 +90,6 @@ export class Server {
     // });
 
     app.get('/graph', async (req: Request, res: Response) => {
-      console.log("Start gremlin request");
       const sg: graphson.GraphSON = await this.gremlinClient.next((g) => g.
         V().
         has("name", "Main_Page").
@@ -113,33 +112,34 @@ export class Server {
         cap("subgraph")
       ).then(r => r.value);
 
-      console.log(sg);
-      console.log("Stop gremlin request");
-
-      //sys.exit(1);
-
       const nodes: any = sg.vertices.map( (vert: graphson.Vertex) => {
         const id = vert["@value"].id["@value"].toString();
         const rawLabel = vert["@value"].properties["name"][0]["@value"].value;
         const numLinks = getNumLinks(vert);
         const sanitizedLabel = decodeURI(rawLabel).replace(/_/g, " ") + ` (${numLinks.toString()})`;
+        const degree = getVertexDegree(vert);
         return {
           id: id,
           label: sanitizedLabel,
           x: numericHash(sanitizedLabel),
           y: numericHash(reverse(sanitizedLabel)),
-          color: "#000",
+          color: getColour(degree),
           size: getNodeSize(numLinks),
         }
       });
 
       const edges: graphmodel.Edge[] = sg.edges.map((e: graphson.Edge) => {
+        const id = e["@value"].id["@value"].toString();
+        const label = e["@value"].label;
+        const source = e["@value"].outV["@value"].toString();
+        const target = e["@value"].inV["@value"].toString();
+        const degree = getEdgeDegree(e);
         return {
-          id: e["@value"].id["@value"].toString(),
-          label: e["@value"].label,
-          source: e["@value"].outV["@value"].toString(),
-          target: e["@value"].inV["@value"].toString(),
-          color: "#000",
+          id: id,
+          label: label,
+          source: source,
+          target: target,
+          //color: getColour(degree),
           size: 5,
           type: "line",
         }
@@ -241,4 +241,46 @@ function getNumLinks(v: graphson.Vertex): number {
       .properties["numLinks"][0]["@value"]
       .value["@value"] as number || 0
   }).getOrElse(() => 0);
+}
+
+function getVertexDegree(v: graphson.Vertex): number {
+  return TryCatch(() => {
+    return (v as any)["@value"]
+      .properties["degree"][0]["@value"]
+      .value["@value"] as number || 0
+  }).getOrElse(() => 0);
+}
+
+function getEdgeDegree(e: graphson.Edge): number {
+  return TryCatch(() => {
+    return (e as any)["@value"]
+      .properties["degree"]["@value"]
+      .value["@value"] as number || 0;
+  }).getOrElse(() => 0);
+}
+
+function getColour(degree: number): string {
+  const green = "#006400";
+  const blue = "#1E90FF";
+  const red = "#8B0000";
+  const yellow = "#B8860B";
+  const purple = "#800080";
+  const orange = "#FF8C00";
+  const black = "#333333";
+
+  if (degree == 1) {
+    return green;
+  } else if (degree == 2) {
+    return blue;
+  } else if (degree == 3) {
+    return red;
+  } else if (degree == 4) {
+    return yellow;
+  } else if (degree == 5) {
+    return purple;
+  } else if (degree == 6) {
+    return orange;
+  } else {
+    return black;
+  }
 }
