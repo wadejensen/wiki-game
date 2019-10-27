@@ -71,7 +71,7 @@ export class Server {
     });
 
     // debugging endpoint
-    app.get('/healthz', (req: Request, res: Response) => {
+    app.get('/healthz', async (req: Request, res: Response) => {
       try {
         const redisCount = await this.crawler.historySize();
         const gremlinCount = this.gremlinClient
@@ -140,14 +140,12 @@ redisCount=${redisCount}
           label: label,
           source: source,
           target: target,
-          //color: getColour(degree),
           size: 5,
           type: "line",
         }
       });
 
       const data: graphmodel.Graph = { nodes, edges };
-      //console.log(data);
       res.send(data);
     });
 
@@ -211,7 +209,6 @@ redisCount=${redisCount}
         res.status(400).send(errMsg);
         throw new Error(errMsg)
       }
-
     });
 
     app.listen(3000, () => console.log("Listening on port 3000"));
