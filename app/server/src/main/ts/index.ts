@@ -198,8 +198,10 @@ export async function getScalingStats(
 ): Promise<ScalingStats> {
   const numCrawledPages = await crawler.historySize();
   const numQueuedPages = await crawler.queueDepth();
+  // Record a queue depth of zero when the crawler is paused
+  const queueDepthMetric = (await crawler.enabled()) ? numQueuedPages : 0;
   const instanceCount = await getAutoscalingGroupSize(autoscalingClient, asgName);
-  return new ScalingStats(numCrawledPages, numQueuedPages, instanceCount);
+  return new ScalingStats(numCrawledPages, queueDepthMetric, instanceCount);
 }
 
 export async function getGraphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
@@ -240,17 +242,14 @@ function countVerticesQuery(gremlinConnection: GremlinConnection): Promise<numbe
 
 async function publishQueueDepthMetric(
     cloudwatchClient: AWS.CloudWatch,
-    crawler: Crawler,
     queueDepth: number,
 ) {
-  // Publish a queue depth of zero when the crawler is paused
-  const metricValue = (await crawler.enabled()) ? queueDepth : 0;
   const params = {
     MetricData: [
       {
         MetricName: 'CRAWLER_QUEUE_DEPTH',
         Unit: 'None',
-        Value: metricValue,
+        Value: queueDepth,
       },
     ],
     Namespace: 'WIKI'
