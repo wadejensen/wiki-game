@@ -81,7 +81,7 @@ resource "aws_autoscaling_group" "asg" {
   count = local.count
   name                 = "wiki"
   launch_configuration = aws_launch_configuration.ec2_conf.name
-  min_size             = 3
+  min_size             = 2
   max_size             = 5
   vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.subnet_public
   target_group_arns = [aws_lb_target_group.target[count.index].arn]
