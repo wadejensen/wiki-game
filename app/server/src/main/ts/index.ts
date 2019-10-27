@@ -104,8 +104,8 @@ async function start() {
     const seedUrls = getSeed();
     logger.info(`Seed urls: \n${seedUrls}`);
     const redisConnection = redisClient("debugger");
-    await redisConnection.del("history");
-    await redisConnection.del("queue");
+    // await redisConnection.del("history");
+    // await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
 
     const vertexCountQuery = (g: GraphTraversal) => g.V().count();
@@ -121,7 +121,7 @@ async function start() {
     //setInterval(() => gremlin.toList(vertexCountQuery).then(logger.info), 1000);
     //setInterval(() => gremlin.toList(vertexShowQuery).then(logger.info), 2000);
 
-    await resetGraphDb(gremlin, 0);
+    //await resetGraphDb(gremlin, 0);
 
     const cloudwatchClient = new AWS.CloudWatch({ region: process.env.AWS_DEFAULT_REGION });
     const autoscalingClient = new AWS.AutoScaling({ region: process.env.AWS_DEFAULT_REGION });
@@ -306,31 +306,6 @@ async function publishQueueDepthMetric(
     .promise()
 }
 
-
-//aws describe-auto-scaling-groups --auto-scaling-group-names wiki
-async function publishCrawlerMetrics(
-    cloudwatchClient: AWS.CloudWatch,
-    autoscalingClient: AWS.AutoScaling,
-    crawler: Crawler
-): Promise<void> {
-  await cloudwatchClient.putMetricData().promise();
-  var params = {
-    MetricData: [
-      {
-        MetricName: 'PAGES_VISITED',
-        Dimensions: [
-          {
-            Name: 'UNIQUE_PAGES',
-            Value: 'URLS'
-          },
-        ],
-        Unit: 'None',
-        Value: 1.0
-      },
-    ],
-    Namespace: 'SITE/TRAFFIC'
-  };
-}
 
 async function getAutoscalingGroupSize(autoscalingClient: AWS.AutoScaling, asgName: string): Promise<number> {
   const resp = await autoscalingClient

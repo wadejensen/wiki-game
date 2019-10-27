@@ -100,14 +100,14 @@ export class Server {
             inV().
             dedup().
             order().by(bothE().count(), desc).by("name", desc).
-            limit(6).
+            limit(8).
             select("edges").
             subgraph("subgraph").
             inV()
           ).
           dedup()
         ).
-        times(3).
+        times(6).
         simplePath().
         cap("subgraph")
       ).then(r => r.value);
@@ -260,20 +260,20 @@ function getEdgeDegree(e: graphson.Edge): number {
 }
 
 function getColour(degree: number): string {
-  const green = "#006400";
   const blue = "#1E90FF";
-  const red = "#8B0000";
+  const red = "#C23B22";
+  const green = "#006400";
   const yellow = "#B8860B";
   const purple = "#800080";
   const orange = "#FF8C00";
   const black = "#333333";
 
   if (degree == 1) {
-    return green;
-  } else if (degree == 2) {
     return blue;
-  } else if (degree == 3) {
+  } else if (degree == 2) {
     return red;
+  } else if (degree == 3) {
+    return green;
   } else if (degree == 4) {
     return yellow;
   } else if (degree == 5) {

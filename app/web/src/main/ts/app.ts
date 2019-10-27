@@ -23,7 +23,7 @@ const s = new sigma(
       type: 'canvas'
     }],
     settings: {
-      labelThreshold: 1,
+      labelThreshold: 2.5,
       labelColor: "node",
       edgeColor: "target",
     }
@@ -34,8 +34,8 @@ setupListeners();
 renderGraph(s);
 updateStats();
 
-setInterval(() => renderGraph(s), 7000);
-setInterval(() => updateStats(), 3000);
+setInterval(() => renderGraph(s), 15000);
+setInterval(() => updateStats(), 5000);
 
 async function renderGraph(s: Sigma): Promise<void> {
   s.killForceAtlas2();
@@ -45,7 +45,7 @@ async function renderGraph(s: Sigma): Promise<void> {
   s.graph.clear();
   s.graph.read(data);
   s.startForceAtlas2();
-  setTimeout(function() {s.killForceAtlas2()}, 100);
+  setTimeout(function() {s.killForceAtlas2()}, 7000);
   s.refresh();
 }
 

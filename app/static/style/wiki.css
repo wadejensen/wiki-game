@@ -286,7 +286,7 @@ input.parambox:focus, select.parambox:focus {
 
 #stats-container {
     position: absolute;
-    bottom: 0;
+    bottom: 4vh;
     right: 0;
     /*height: 33%;*/
     /*width: 15%;*/
