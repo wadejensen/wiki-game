@@ -50,6 +50,7 @@ async function renderGraph(s: Sigma): Promise<void> {
 async function updateStats() {
   const seedUrl = "Main_Page";
   const stats: ApplicationStats = await getStats(seedUrl);
+  console.log(stats);
   const statsContainer = getStatsContainer();
   statsContainer.innerHTML =
 `<p>   Pages crawled: <span class="stats-value">${stats.numPagesCrawled.toLocaleString()  || "no data"}</span></p>

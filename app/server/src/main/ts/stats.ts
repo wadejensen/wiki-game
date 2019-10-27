@@ -2,7 +2,7 @@ import * as AWS from "aws-sdk";
 import {Crawler} from "./crawler";
 import {GremlinConnection} from "./graph/gremlin_connection";
 import {logger} from "../../../../common/src/main/ts/logger";
-import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
+import {AutoScalingGroup, AutoScalingGroups, Instance} from "aws-sdk/clients/autoscaling";
 import * as gremlin from "gremlin";
 import GraphTraversal = gremlin.process.GraphTraversal;
 import {GraphStats, ScalingStats} from "../../../../common/src/main/ts/stats";
@@ -107,11 +107,10 @@ async function getAutoscalingGroupSize(autoscalingClient: AWS.AutoScaling, asgNa
     .promise()
     .catch((err) => logger.error(err));
 
-  const asgs = resp
-    .AutoScalingGroups
-    .filter((asg: AutoScalingGroup) => asg.AutoScalingGroupName == asgName);
+  const asgs: AutoScalingGroup[] = Array.from(resp.AutoScalingGroups as AutoScalingGroup[])
+    .filter((asg: AutoScalingGroup, i: number) => asg.AutoScalingGroupName == asgName);
 
-  return asgs.length != 0
-    ? asgs.Instances!.filter((inst: Instance) => inst.LifecycleState == "InService")!.length
+  return asgs.length != 0 && asgs.length == 1
+    ? asgs[0].Instances!.filter((inst: Instance) => inst.LifecycleState == "InService")!.length
     : 0;
 }

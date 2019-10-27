@@ -74,7 +74,7 @@ export class Server {
     app.get('/healthz', async (req: Request, res: Response) => {
       try {
         const redisCount = await this.crawler.historySize();
-        const gremlinCount = this.gremlinClient
+        const gremlinCount = await this.gremlinClient
           .next((g: GraphTraversal) => g.V().count())
           .then(r => r.value);
 
