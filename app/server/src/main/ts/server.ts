@@ -14,7 +14,9 @@ import {x86} from "murmurhash3js"
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
 import {TryCatch} from "../../../../common/src/main/ts/fp/try";
-import {ApplicationStats, getGraphStats, getScalingStats, GraphStats, ScalingStats} from "./stats";
+import {ApplicationStats, GraphStats, ScalingStats} from "../../../../common/src/main/ts/stats";
+import {getGraphStats, getScalingStats} from "./stats";
+import GraphTraversal = process.GraphTraversal;
 
 const bodyParser = require("body-parser");
 
@@ -70,24 +72,23 @@ export class Server {
 
     // debugging endpoint
     app.get('/healthz', (req: Request, res: Response) => {
-      res.status(200);
-      res.send(new Date().getTime());
-    });
+      try {
+        const redisCount = await this.crawler.historySize();
+        const gremlinCount = this.gremlinClient
+          .next((g: GraphTraversal) => g.V().count())
+          .then(r => r.value);
 
-    // app.get('/graph', (req: Request, res: Response) => {
-    //   const graph = {
-    //     nodes: [
-    //       { id: "n0", label: "A node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
-    //       { id: "n1", label: "Another node", x: Math.random(), y: Math.random(), size: 1, color: '#008cc2' },
-    //       { id: "n2", label: "And a last one", x: Math.random(), y: Math.random(), size: 1, color: '#E57821' }
-    //     ],
-    //     edges: [
-    //       { id: "e0", source: "n0", target: "n1", color: '#282c34', type:'line', size:0.5 },
-    //       { id: "e1", source: "n1", target: "n2", color: '#282c34', type:'curve', size:1},
-    //     ]
-    //   };
-    //   res.send(graph);
-    // });
+        res.status(200);
+        res.send(`
+gremlinCount=${gremlinCount}
+redisCount=${redisCount}
+`
+        );
+      } catch (err) {
+        res.status(500);
+        res.send(`Could not contact data store(s): ${err}`);
+      }
+    });
 
     app.get('/graph', async (req: Request, res: Response) => {
       const sg: graphson.GraphSON = await this.gremlinClient.next((g) => g.
@@ -204,8 +205,6 @@ export class Server {
       } else if (action == "reset") {
         console.log("Reseting crawler");
         await this.crawler.reset();
-        await Async.delay(() => resetGraphDb(this.gremlinClient, 0), 3000);
-        await Async.delay(() => resetGraphDb(this.gremlinClient, 0), 10000);
         res.status(202).send();
       } else {
         const errMsg = `Unknown crawler action: ${action}`;

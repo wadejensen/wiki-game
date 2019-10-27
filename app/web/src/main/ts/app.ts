@@ -1,12 +1,12 @@
 // @ts-ignore
 
 import {getGraph, getStats, postCrawlerAction} from "./endpoints";
-import {ApplicationStats} from "../../../../server/src/main/ts";
 import {
-  getPauseCrawlButton,
+  getPauseCrawlButton, getResetCrawlButton,
   getStartCrawlButton,
   getStatsContainer
 } from "./dom/dom_element_locator";
+import {ApplicationStats} from "../../../../common/src/main/ts/stats";
 
 declare const sigma: any;
 
@@ -87,10 +87,10 @@ function setupListeners() {
       console.error("Failed to start crawler!!!")
     }
   });
-  // getResetCrawlButton().addEventListener("click", async () => {
-  //   console.log("Reset crawler");
-  //   console.log(new Date());
-  //   const resp = await postCrawlerAction("reset", {});
-  //   console.log(new Date());
-  // });
+  getResetCrawlButton().addEventListener("click", async () => {
+    console.log("Reset crawler");
+    console.log(new Date());
+    const resp = await postCrawlerAction("reset", {});
+    console.log(new Date());
+  });
 }

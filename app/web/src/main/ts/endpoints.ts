@@ -1,6 +1,5 @@
 import {graphmodel} from "../../../../common/src/main/ts/graph";
-import {ApplicationStats} from "../../../../server/src/main/ts";
-
+import {ApplicationStats} from "../../../../common/src/main/ts/stats";
 
 export async function getGraph(): Promise<graphmodel.Graph> {
   return fetch(`${window.location}graph`, {

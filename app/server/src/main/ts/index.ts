@@ -6,7 +6,6 @@ import {
   crawlerFlag,
   graphClient,
   gremlinConcurrency,
-  redisClient,
   wikipediaCrawler
 } from "./server_module";
 import {CrawlerRecord} from "./crawler";
@@ -113,7 +112,6 @@ async function writeToGraphDb(
   record: CrawlerRecord
 ): Promise<void> {
   if (await flag.enabled()) {
-    console.log("Submitting work............");
     return Async.exponentialBackoff(() =>
       insertCrawlerRecord(gremlinClient, record), 3, 3000)
   } else {

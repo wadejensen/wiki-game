@@ -5,6 +5,7 @@ import {logger} from "../../../../common/src/main/ts/logger";
 import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
 import * as gremlin from "gremlin";
 import GraphTraversal = gremlin.process.GraphTraversal;
+import {GraphStats, ScalingStats} from "../../../../common/src/main/ts/stats";
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -25,49 +26,6 @@ const has = gremlin.process.statics.has;
 const eq = gremlin.process.P.eq;
 const gte = gremlin.process.P.gte;
 const select = gremlin.process.statics.select;
-
-export class ApplicationStats {
-  constructor(
-    readonly numPagesCrawled: number,
-    readonly queueDepth: number,
-    readonly instanceCount: number,
-    readonly firstDegreeVertices: number,
-    readonly secondDegreeVertices: number,
-    readonly thirdDegreeVertices: number,
-    readonly forthDegreeVertices: number,
-    readonly totalVertices: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-export class ScalingStats {
-  constructor(
-    readonly numPagesCrawled: number,
-    readonly queueDepth: number,
-    readonly instanceCount: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-export class GraphStats {
-  constructor(
-    readonly firstDegreeVertices: number,
-    readonly secondDegreeVertices: number,
-    readonly thirdDegreeVertices: number,
-    readonly forthDegreeVertices: number,
-    readonly totalVertices: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
 
 export async function getScalingStats(
   cloudwatchClient: AWS.CloudWatch,
