@@ -93,6 +93,14 @@ resource "aws_autoscaling_group" "asg" {
   lifecycle {
     create_before_destroy = true
   }
+
+  tags = [
+    {
+      key                 = "Name"
+      value               = "Crawler"
+      propagate_at_launch = true
+    }
+  ]
 }
 
 resource "aws_autoscaling_policy" "scaling_policy" {
@@ -110,29 +118,6 @@ resource "aws_autoscaling_policy" "scaling_policy" {
     }
     target_value = 20000
   }
-}
-
-target_tracking_scaling_policy_configuration {
-  customized_metric_specification {
-    namespace   = "MyCustomMetricsNamespace"
-    metric_name = "InflightRequests"
-    statistic   = "Average"
-    unit        = "None"
-
-    dimensions {
-      name  = "Environment"
-      value = "production"
-    }
-
-    dimensions {
-      name  = "Service"
-      value = "myservice"
-    }
-  }
-
-  target_value       = "100"
-  scale_in_cooldown  = "300" # seconds
-  scale_out_cooldown = "60" # seconds
 }
 
 resource "aws_launch_configuration" "ec2_conf" {

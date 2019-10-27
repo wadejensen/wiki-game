@@ -109,7 +109,7 @@ async function start() {
     setInterval(async () => {
         const stats = await getScalingStats(cloudwatchClient, autoscalingClient, crawler, ASG_NAME);
         console.info(stats);
-        await publishQueueDepthMetric(cloudwatchClient, crawler, stats.queueDepth);
+        await publishQueueDepthMetric(cloudwatchClient, stats.queueDepth);
     },
       30000
     );
