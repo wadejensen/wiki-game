@@ -7,7 +7,6 @@ import {process} from "gremlin";
 import {graphson} from "../../../../common/src/main/ts/gremlin";
 import {graphmodel} from "../../../../common/src/main/ts/graph";
 import {GremlinConnection} from "./graph/gremlin_connection";
-import {ApplicationStats, getGraphStats, getScalingStats, GraphStats, ScalingStats} from "./index";
 import {AutoScaling, CloudWatch} from "aws-sdk";
 import {Crawler} from "./crawler";
 
@@ -15,6 +14,7 @@ import {x86} from "murmurhash3js"
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
 import {TryCatch} from "../../../../common/src/main/ts/fp/try";
+import {ApplicationStats, getGraphStats, getScalingStats, GraphStats, ScalingStats} from "./stats";
 
 const bodyParser = require("body-parser");
 
@@ -177,14 +177,30 @@ export class Server {
       console.log(`action=${action}`);
       if (action == "start") {
         console.log("Starting crawler");
-        await this.crawler.enable();
+        try {
+          await this.crawler.enable();
+          console.log("Enable confirmed");
+          res.status(202).send();
+        } catch (err) {
+          const errMsg = "Failed to enable crawler!!!";
+          console.error(`${err} ${errMsg}`);
+          res.status(500).send(errMsg);
+        }
         await Async.delayP(() =>
           this.crawler.addSeed(new URL("https://en.wikipedia.org/wiki/Main_Page")),
           6000
         );
       } else if (action == "pause") {
         console.log("Pausing crawler");
-        await this.crawler.pause();
+        try {
+          await this.crawler.pause();
+          console.log("Pause confirmed");
+          res.status(202).send();
+        } catch (err) {
+          const errMsg = "Failed to pause crawler!!!";
+          console.error(`${err} ${errMsg}`);
+          res.status(500).send(errMsg);
+        }
       } else if (action == "reset") {
         console.log("Reseting crawler");
         await this.crawler.reset();

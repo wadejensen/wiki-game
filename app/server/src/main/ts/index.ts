@@ -9,7 +9,7 @@ import {
   redisClient,
   wikipediaCrawler
 } from "./server_module";
-import {Crawler, CrawlerRecord} from "./crawler";
+import {CrawlerRecord} from "./crawler";
 import {insertCrawlerRecord} from "./graph";
 
 import {from, of} from "rxjs";
@@ -20,9 +20,9 @@ import {Preconditions} from "../../../../common/src/main/ts/preconditions";
 import {sys} from "typescript";
 import {logger} from "../../../../common/src/main/ts/logger";
 import {Async} from "../../../../common/src/main/ts/async";
-import {AutoScalingGroup, Instance} from "aws-sdk/clients/autoscaling";
 import {Flag} from "./flag";
 import GraphTraversal = p.GraphTraversal;
+import {getGraphStats, getScalingStats, publishQueueDepthMetric} from "./stats";
 
 const addV = gremlin.process.statics.addV;
 const addE = gremlin.process.statics.addE;
@@ -54,25 +54,12 @@ async function start() {
   try {
     const seedUrls = getSeed();
     logger.info(`Seed urls: \n${seedUrls}`);
-    const redisConnection = redisClient("debugger");
-    // await redisConnection.del("history");
-    // await redisConnection.del("queue");
     const gremlin: GremlinConnection = await graphClient();
 
     const vertexCountQuery = (g: GraphTraversal) => g.V().count();
-    const vertexShowQuery = (g: GraphTraversal) => g.V().limit(10).valueMap();
-
-    // logger.info("Drop all vertices");
-    // await gremlin.iterate((g: GraphTraversal) => g.V().drop());
     await gremlin
       .toList(vertexCountQuery)
       .then(cntArr => logger.info(`Num vertices = ${cntArr[0]}`));
-
-    logger.info("Schedule vertex count");
-    //setInterval(() => gremlin.toList(vertexCountQuery).then(logger.info), 1000);
-    //setInterval(() => gremlin.toList(vertexShowQuery).then(logger.info), 2000);
-
-    //await resetGraphDb(gremlin, 0);
 
     const cloudwatchClient = new AWS.CloudWatch({ region: process.env.AWS_DEFAULT_REGION });
     const autoscalingClient = new AWS.AutoScaling({ region: process.env.AWS_DEFAULT_REGION });
@@ -102,8 +89,6 @@ async function start() {
         }),
       )
       .subscribe(() => logger.info("Flushed"));
-
-    //seedUrls.forEach(url => crawler.addSeed(new URL(url)));
 
     // publish metrics
     setInterval(async () => {
@@ -145,132 +130,4 @@ function getSeed(): string[] {
     .split("\n")
     .filter(line => line.length !== 0)
     .map(line => line.trim());
-}
-
-export class ApplicationStats {
-  constructor(
-    readonly numPagesCrawled: number,
-    readonly queueDepth: number,
-    readonly instanceCount: number,
-    readonly firstDegreeVertices: number,
-    readonly secondDegreeVertices: number,
-    readonly thirdDegreeVertices: number,
-    readonly forthDegreeVertices: number,
-    readonly totalVertices: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-export class ScalingStats {
-  constructor(
-    readonly numPagesCrawled: number,
-    readonly queueDepth: number,
-    readonly instanceCount: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-export class GraphStats {
-  constructor(
-    readonly firstDegreeVertices: number,
-    readonly secondDegreeVertices: number,
-    readonly thirdDegreeVertices: number,
-    readonly forthDegreeVertices: number,
-    readonly totalVertices: number,
-  ) {}
-
-  toString() {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-export async function getScalingStats(
-    cloudwatchClient: AWS.CloudWatch,
-    autoscalingClient: AWS.AutoScaling,
-    crawler: Crawler,
-    asgName: string,
-): Promise<ScalingStats> {
-  const numCrawledPages = await crawler.historySize();
-  const numQueuedPages = await crawler.queueDepth();
-  // Record a queue depth of zero when the crawler is paused
-  const queueDepthMetric = (await crawler.enabled()) ? numQueuedPages : 0;
-  const instanceCount = await getAutoscalingGroupSize(autoscalingClient, asgName);
-  return new ScalingStats(numCrawledPages, queueDepthMetric, instanceCount);
-}
-
-export async function getGraphStats(gremlinClient: GremlinConnection, seedUrl: string): Promise<GraphStats> {
-  return new GraphStats(
-    await numVerticesQuery(gremlinClient, seedUrl, 1),
-    await numVerticesQuery(gremlinClient, seedUrl, 2),
-    await numVerticesQuery(gremlinClient, seedUrl, 3),
-    await numVerticesQuery(gremlinClient, seedUrl, 4),
-    await countVerticesQuery(gremlinClient),
-  );
-}
-
-function numVerticesQuery(
-    gremlinConnection: GremlinConnection,
-    url: string,
-    degreesOfSeparation: number,
-): Promise<number> {
-  const query = (g: GraphTraversal) => g.
-    V().
-    has("url", "href", url).
-    repeat(outE().where(has("degree", loops())).inV().dedup()).
-    times(degreesOfSeparation).
-    simplePath().
-    count();
-
-  return gremlinConnection
-    .next(query)
-    .then(res => res.value as number)
-}
-
-function countVerticesQuery(gremlinConnection: GremlinConnection): Promise<number> {
-  const query = (g: GraphTraversal) => g.V().count();
-  return gremlinConnection
-    .next(query)
-    .then(res => res.value as number)
-
-}
-
-async function publishQueueDepthMetric(
-    cloudwatchClient: AWS.CloudWatch,
-    queueDepth: number,
-) {
-  const params = {
-    MetricData: [
-      {
-        MetricName: 'CRAWLER_QUEUE_DEPTH',
-        Unit: 'None',
-        Value: queueDepth,
-      },
-    ],
-    Namespace: 'WIKI'
-  };
-  return await cloudwatchClient
-    .putMetricData(params)
-    .promise()
-}
-
-
-async function getAutoscalingGroupSize(autoscalingClient: AWS.AutoScaling, asgName: string): Promise<number> {
-  const resp = await autoscalingClient
-    .describeAutoScalingGroups({ AutoScalingGroupNames: [ASG_NAME] })!
-    .promise()
-    .catch((err) => logger.error(err));
-
-  const asgs = resp
-    .AutoScalingGroups
-    .filter((asg: AutoScalingGroup) => asg.AutoScalingGroupName == asgName);
-
-  return asgs.length != 0
-    ? asgs.Instances!.filter((inst: Instance) => inst.LifecycleState == "InService")!.length
-    : 0;
 }

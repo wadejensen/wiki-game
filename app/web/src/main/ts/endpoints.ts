@@ -24,7 +24,7 @@ export async function getStats(seedUrl: string): Promise<ApplicationStats> {
     .catch(err => console.error(err));
 }
 
-export async function postCrawlerAction(action: 'start' | 'pause' | 'reset', body: any): Promise<ApplicationStats> {
+export async function postCrawlerAction(action: 'start' | 'pause' | 'reset', body: any) {
   return fetch(`${window.location}crawler/control/${action}`, {
     method: "POST",
     headers: {
@@ -32,7 +32,6 @@ export async function postCrawlerAction(action: 'start' | 'pause' | 'reset', bod
     },
     body: JSON.stringify(body),
   }).then(handleFailure)
-    .then(resp => resp.json())
     .catch(err => console.error(err));
 }
 

@@ -114,7 +114,11 @@ resource "aws_security_group" "public" {
     from_port = 0
     to_port = 0
     protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [
+      "49.255.94.0/24",
+      "103.243.110.0/24",
+      "10.0.0.0/12",
+    ]
   }
 
   // ALLOW ALL
@@ -150,21 +154,21 @@ resource "aws_security_group" "private" {
   }
 }
 
-//resource "aws_instance" "bastion" {
-//  count = local.count
-//  # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
-//  ami = "ami-0c59395006484f97a"
-//  instance_type = "t2.micro"
-//  instance_initiated_shutdown_behavior = "terminate"
-//  key_name = "adhoc"
-//  vpc_security_group_ids = aws_security_group.public.*.id
-//  subnet_id = aws_subnet.public.*.id[0]
-//  iam_instance_profile = data.terraform_remote_state.iam.outputs.wiki_worker_instance_profile_id
-//}
-//
-//output "bastion_public_ip" {
-//  value = length(aws_instance.bastion.*.public_ip) == 1 ? aws_instance.bastion.*.public_ip[0] : ""
-//}
+resource "aws_instance" "bastion" {
+  count = local.count
+  # Ubuntu 18.04 with Docker and the AWS CLI pre-installed
+  ami = "ami-0c59395006484f97a"
+  instance_type = "t2.micro"
+  instance_initiated_shutdown_behavior = "terminate"
+  key_name = "adhoc"
+  vpc_security_group_ids = aws_security_group.public.*.id
+  subnet_id = aws_subnet.public.*.id[0]
+  iam_instance_profile = data.terraform_remote_state.iam.outputs.wiki_worker_instance_profile_id
+}
+
+output "bastion_public_ip" {
+  value = length(aws_instance.bastion.*.public_ip) == 1 ? aws_instance.bastion.*.public_ip[0] : ""
+}
 
 output "vpc_id" {
   value = aws_vpc.main.*.id

@@ -90,6 +90,9 @@ resource "aws_autoscaling_group" "asg" {
   health_check_grace_period = 120
   health_check_type = "ELB"
 
+  metrics_granularity = "1Minute"
+  enabled_metrics = ["GroupInServiceInstances"]
+
   lifecycle {
     create_before_destroy = true
   }
