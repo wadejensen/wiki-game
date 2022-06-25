@@ -54,7 +54,7 @@
     "filter-async-rxjs-pipe": "^0.1.5",
     "gremlin": "^3.4.3",
     "murmurhash3js": "^3.0.1",
-    "node-fetch": "^2.5.0",
+    "node-fetch": "^2.6.7",
     "redis": "^2.8.0",
     "robots-parser": "^2.1.1",
     "rxjs": "^6.5.3",
